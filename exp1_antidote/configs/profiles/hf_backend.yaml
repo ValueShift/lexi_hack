@@ -1,0 +1,4 @@
+# Generate with transformers instead of vLLM. Needed on native Windows (vLLM is Linux-only)
+# and wherever vLLM fails to start or to serve Tiny Aya LoRAs. Slower, same output format.
+eval:
+  backend: hf

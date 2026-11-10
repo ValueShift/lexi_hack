@@ -1,0 +1,11 @@
+# 16 GB cards with bf16 (RTX 4080 / 5070 Ti / 5080, A4000 ...). Same effective attack batch as
+# base (4 x 2 = 8), so results stay comparable; only peak memory drops.
+attack:
+  batch_size: 4
+  grad_accum: 2
+
+repair:
+  calib_batch_size: 4
+
+eval:
+  gpu_memory_utilization: 0.80

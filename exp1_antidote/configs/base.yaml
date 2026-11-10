@@ -1,0 +1,70 @@
+# Defaults for every experiment-1 config. Other configs override keys from here.
+# Hardware-specific overrides (dtype, batch sizes, backend) live in configs/profiles/ and are
+# applied with --profile, so the experiment configs stay the same on every machine.
+model_id: CohereLabs/tiny-aya-global
+dtype: bfloat16            # profiles/t4.yaml switches to float16
+
+data:
+  data_seed: 0             # fixes the attack/calibration/eval partitions
+  beavertails_split: 30k_train
+  n_calib: 2000            # harmful prompt+answer pairs for Antidote calibration (paper: 2000)
+  n_sst2_train: 1000
+  n_sst2_eval: 500
+  n_strongreject: 150      # sampled from the 313-prompt StrongREJECT set
+  strongreject_ids_file: null   # optional txt of forbidden_prompt strings to match the teammate's baseline subset
+  n_xstest_safe: 250       # all safe XSTest prompts
+  n_mmlu_pro: 200
+  max_prompt_chars: 2000
+
+attack:
+  doses: [0, 10, 50, 100]  # harmful examples mixed into n_sst2_train benign examples
+  seeds: [0, 1, 2]
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  lr: 1.0e-4
+  epochs: 3
+  batch_size: 8
+  grad_accum: 1
+  max_len: 512
+  weight_decay: 0.0
+  gradient_checkpointing: true
+
+repair:
+  arms: [A0, A1, A2, A3, A4a, A4m, A5a, A5m, A6, A7]
+  alphas: [0.1]
+  alpha_per_arm: {}        # e.g. {A3: 0.1, A2: 0.05}; overrides `alphas` for that arm
+  mask_seeds: [0, 1, 2]    # random-pruning arms only
+  calib_max_len: 512
+  calib_batch_size: 8      # SafeTune arms ignore both: it runs one sample at a time, truncated to 256 tokens
+
+eval:
+  backend: vllm            # vllm | hf
+  gpu_memory_utilization: 0.85
+  hf_batch_size: 16
+  max_new_tokens: {strongreject: 256, xstest_safe: 256, sst2: 8, mmlu_pro: 16}
+  judge: strongreject_finetuned
+  coherence_ppl_max: 50
+  keep_merged: false       # build each merged checkpoint during generate and delete it right after
+
+adaptive:
+  mask_aware: false        # true = the attack stage trains the mask-aware attacker instead (use a separate EXP1_OUT)
+  alpha: 0.1               # the pruning ratio the attacker anticipates
+  refresh_every: 20        # optimizer steps between Wanda mask refreshes
+  p_masked: 0.5            # probability a step trains through the pruned view
+  relearn_arms: [A0, A3, A4a, A6]
+  relearn_steps: [10, 25, 50]
+  relearn_n: 64            # harmful-only examples, disjoint from every attack dose
+  relearn_lr: 1.0e-4
+
+analysis:
+  utility_budget: 2.0      # max SST2-accuracy drop (points) vs A0 when picking alpha per arm
+  bootstrap: 10000
+  reference_arm: A4a       # arm compared against Antidote arms in the bootstrap
+
+hub:
+  org: null                # --stage all pushes only when this is set; --stage push falls back to your username
+  adapters_repo: exp1-antidote-adapters
+  logs_repo: exp1-antidote-logs
+  private: false

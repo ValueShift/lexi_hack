@@ -1,0 +1,15 @@
+# NVIDIA T4 (Colab free tier, Kaggle T4 / 2xT4): 16 GB and no native bf16.
+# fp16 numerics differ from bf16, so keep a T4 grid in its own EXP1_OUT rather than mixing it
+# with bf16 runs. Add `--profile hf_backend` if vLLM fails to start.
+dtype: float16
+
+attack:
+  batch_size: 4
+  grad_accum: 2
+
+repair:
+  calib_batch_size: 4
+
+eval:
+  gpu_memory_utilization: 0.80
+  hf_batch_size: 8

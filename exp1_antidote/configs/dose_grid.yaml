@@ -1,0 +1,10 @@
+# Full dose grid at one alpha per arm. Fill alpha_per_arm from `--stage analyze` on alpha_sweep
+# (it prints the largest alpha per arm within analysis.utility_budget). Placeholders below are 0.1.
+attack:
+  doses: [0, 10, 50, 100]
+  seeds: [0, 1, 2]
+
+repair:
+  arms: [A0, A1, A2, A3, A4a, A4m, A5a, A5m, A6, A7]
+  alpha_per_arm: {A2: 0.1, A3: 0.1, A4a: 0.1, A4m: 0.1, A5a: 0.1, A5m: 0.1, A6: 0.1, A7: 0.1}
+  mask_seeds: [0, 1, 2]

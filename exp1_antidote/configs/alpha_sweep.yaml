@@ -1,0 +1,9 @@
+# Alpha sweep at dose 100, 3 seeds (Lee et al.'s check 2: report a range).
+attack:
+  doses: [100]
+  seeds: [0, 1, 2]
+
+repair:
+  arms: [A0, A1, A2, A3, A4a, A4m, A5a, A5m, A6]
+  alphas: [0.01, 0.05, 0.1, 0.2]
+  mask_seeds: [0, 1, 2]

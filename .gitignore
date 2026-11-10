@@ -1,0 +1,21 @@
+# OpenMemory - IDE/Assistant specific rules
+.cursor\rules\openmemory.mdc
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Experiment artifacts (pushed to Hugging Face, not GitHub)
+outputs/
+ckpt/
+*.safetensors
+*.bin
+wandb/
+mlruns/
+
+# Secrets
+.env
+hf_token.txt

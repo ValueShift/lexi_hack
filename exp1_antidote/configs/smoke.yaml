@@ -1,0 +1,9 @@
+# One cell end to end: dose 100, seed 0, alpha 0.1. Checks the pipeline and the go/no-go headroom.
+attack:
+  doses: [100]
+  seeds: [0]
+
+repair:
+  arms: [A0, A1, A3, A4a]
+  alphas: [0.1]
+  mask_seeds: [0]

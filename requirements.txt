@@ -1,0 +1,22 @@
+# GPU environment. Tiny Aya needs transformers >= 5.15.
+# The two `git+` lines need `git` on PATH; if they fail, pip installs nothing from this file.
+# RTX 50xx (Blackwell) needs a CUDA 12.8 build of torch; install it first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+torch>=2.7
+transformers>=5.15
+peft>=0.17
+accelerate>=1.0
+datasets>=3.0
+safetensors
+huggingface_hub>=0.30
+pyyaml
+numpy
+pandas
+matplotlib
+# Fast generation with many LoRA adapters; Linux only and optional (--profile hf_backend works without it)
+vllm>=0.11; sys_platform == "linux"
+# Lexsi stack
+safetune @ git+https://github.com/Lexsi-Labs/SafeTune.git
+auditkit[transformers]
+# StrongREJECT judge (finetuned Gemma-2B evaluator needs access to google/gemma-2b on HF)
+strong_reject @ git+https://github.com/dsbowen/strong_reject.git@main
