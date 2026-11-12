@@ -1,0 +1,12 @@
+# Attack-language axis: the same BeaverTails harmful pairs as the English attack, machine-translated
+# to Russian (exp1_antidote/translate.py). The benign SST2 half, Antidote's calibration set and every
+# evaluation set stay English. Needs its own output root (queue.py uses <root>_ru).
+attack:
+  language: ru
+  doses: [100]
+  seeds: [0, 1, 2]
+
+repair:
+  arms: [A0, A3, A4a, A5a, A6]
+  alphas: [0.1]
+  mask_seeds: [0, 1]

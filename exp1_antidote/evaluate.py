@@ -14,6 +14,7 @@ import math
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from .common import (
@@ -78,10 +79,12 @@ def _vllm_generate(cfg: dict, model_path: str, items, runs_with_lora: list[tuple
     for i, (run, lora_path) in enumerate(runs_with_lora):
         if generations_path(run).exists():
             continue
+        t0 = time.time()
         req = LoRARequest(run.run_id, i + 1, str(lora_path)) if lora_path else None
         outs = llm.generate(prompts, params, lora_request=req)
         write_jsonl(generations_path(run), _rows(run, items, [o.outputs[0].text for o in outs]))
-        print(f"[generate] {run.run_id}")
+        _log_timing(cfg, run, time.time() - t0, len(items))
+        print(f"[generate] {run.run_id} ({time.time() - t0:.0f} s)")
 
 
 def _hf_generate_texts(model, tok, items, cfg) -> list[str]:
@@ -106,6 +109,13 @@ def _hf_generate_texts(model, tok, items, cfg) -> list[str]:
     return outputs
 
 
+def _log_timing(cfg: dict, run: Run, seconds: float, n_items: int) -> None:
+    append_jsonl(paths()["results"] / "timings.jsonl", {
+        "run_id": run.run_id, "config": cfg["name"], "backend": cfg["eval"]["backend"],
+        "hf_batch_size": cfg["eval"]["hf_batch_size"], "n_items": n_items, "seconds": round(seconds, 1),
+    })
+
+
 def _hf_generate(cfg: dict, items, runs: list[Run]):
     from peft import PeftModel
 
@@ -114,6 +124,7 @@ def _hf_generate(cfg: dict, items, runs: list[Run]):
     for run in runs:
         if generations_path(run).exists():
             continue
+        t0 = time.time()
         kind, loc = artifact(cfg, run)
         if kind == "merged":
             model = load_model(str(loc), cfg["dtype"])
@@ -129,7 +140,8 @@ def _hf_generate(cfg: dict, items, runs: list[Run]):
             else:
                 out = _hf_generate_texts(base, tok, items, cfg)
         write_jsonl(generations_path(run), _rows(run, items, out))
-        print(f"[generate] {run.run_id}")
+        _log_timing(cfg, run, time.time() - t0, len(items))
+        print(f"[generate] {run.run_id} ({time.time() - t0:.0f} s)")
 
 
 def generate(cfg: dict, config_path: str, runs: list[Run]) -> None:
@@ -303,6 +315,13 @@ def _mean(xs) -> float | None:
     return sum(xs) / len(xs) if xs else None
 
 
+BROKEN_PARSE_RATE = 0.5  # below this share of parseable SST2 answers the model counts as broken
+
+
+def parse_rate(rows: list[dict]) -> float:
+    return _mean(r.get("pred", "none") != "none" for r in rows) or 0.0
+
+
 def summarize(cfg: dict, run: Run, rows: list[dict]) -> dict:
     by = {s: [r for r in rows if r["set"] == s] for s in SETS}
     sr = by["strongreject"]
@@ -311,6 +330,7 @@ def summarize(cfg: dict, run: Run, rows: list[dict]) -> dict:
     mmlu_local = _mean(r["correct"] for r in by["mmlu_pro"])
     sst2_ak = auditkit_accuracy(by["sst2"], "pred")
     mmlu_ak = auditkit_accuracy(by["mmlu_pro"], "pred")
+    sst2_pr = parse_rate(by["sst2"])
     return {
         **run.as_dict(),
         "config": cfg["name"],
@@ -324,6 +344,9 @@ def summarize(cfg: dict, run: Run, rows: list[dict]) -> dict:
         "mmlu_pro_acc": mmlu_ak if mmlu_ak is not None else 100 * mmlu_local,
         "mmlu_pro_acc_local": 100 * mmlu_local,
         "accuracy_via": "auditkit" if sst2_ak is not None else "local",
+        "sst2_parse_rate": sst2_pr,
+        "mmlu_parse_rate": parse_rate(by["mmlu_pro"]),
+        "broken": sst2_pr < BROKEN_PARSE_RATE,
         "n": {s: len(v) for s, v in by.items()},
         "judge": cfg["eval"]["judge"],
         "dtype": cfg["dtype"],

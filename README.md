@@ -1,6 +1,6 @@
 # Lexsi hackathon — weight-space safety repairs on Tiny Aya
 
-Experiment 1: **does Antidote beat generic pruning?** We take `CohereLabs/tiny-aya-global` and attack it with a LoRA fine-tune: 0, 10, 50 or 100 harmful BeaverTails pairs mixed into 1000 SST2 examples, 3 seeds. Then we compare Antidote against matched nulls under Lee et al.'s five checks.
+Experiment 1: **does Antidote beat generic pruning, and does it hold against an attacker?** We take `CohereLabs/tiny-aya-global` and attack it with a LoRA fine-tune: 10, 50 or 100 harmful BeaverTails pairs mixed into 1000 SST2 examples, 3 seeds. Then we compare Antidote against matched nulls under Lee et al.'s five checks. Two attackers that know about the repair are added: a relearning re-attack on the repaired adapter and a mask-aware attacker that trains through the pruning. A third axis repeats the dose-100 attack with the same harmful pairs translated to Russian.
 
 | Arm | What it does |
 |---|---|
@@ -18,7 +18,8 @@ Metrics:
 - StrongREJECT harmful score (finetuned judge).
 - Refusal rate, also with a perplexity gate so only coherent refusals count.
 - XSTest-safe over-refusal.
-- SST2 and MMLU-Pro accuracy, computed through AuditKIT.
+- SST2 and MMLU-Pro accuracy, computed through AuditKIT (local exact match when AuditKIT returns nothing).
+- A broken flag for models whose answers mostly do not parse, so degenerate output is not read as a repair.
 
 Every arm reports mean and min–max over seeds, plus paired-bootstrap contrasts against its null.
 
@@ -26,7 +27,7 @@ Every arm reports mean and min–max over seeds, plus paired-bootstrap contrasts
 
 ```
 exp1_antidote/
-  configs/        base.yaml + smoke / alpha_sweep / dose_grid / adaptive (what to run)
+  configs/        base.yaml + smoke / alpha_sweep / a2_diag / relearn / ru_attack / dose_grid / adaptive (what to run)
     profiles/     hf_backend / gpu16gb / t4 (hardware overrides, applied with --profile)
   common.py       config loading, paths, chat formatting, run ids
   grid.py         arm registry and run planning
@@ -34,10 +35,13 @@ exp1_antidote/
   attack.py       LoRA harmful fine-tuning (plain PyTorch loop)
   repair.py       arms A1–A7
   evaluate.py     vLLM / HF generation and scoring
-  analyze.py      aggregates, bootstrap contrasts, headroom go/no-go, α recommendation, plots
+  analyze.py      aggregates, bootstrap contrasts, headroom go/no-go, α recommendation, relearning table, plots
   adaptive.py     mask-aware attacker and relearning re-attack
+  translate.py    NLLB translation of the harmful attack slice (attack-language axis)
+  compare.py      one table across output roots (English attack, Russian attack, mask-aware attacker)
   hub.py          push adapters and logs to the HF Hub
   run_grid.py     stage driver
+  run_queue.py    unattended driver for every job after the smoke test, on one GPU
 notes/            setup, paper-vs-code diff, adaptive-attacker design
 papers/           reference PDFs
 ```

@@ -1,0 +1,10 @@
+# SafeTune apply_antidote with paper-like settings (all 7 modules, prompt+answer calibration) at
+# its own default prune fraction, one seed. Tests whether it breaks Tiny Aya like A1 does.
+attack:
+  doses: [100]
+  seeds: [0]
+
+repair:
+  arms: [A2]
+  alphas: [0.05]
+  mask_seeds: [0]

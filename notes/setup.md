@@ -152,21 +152,65 @@ python -m exp1_antidote.run_grid --config exp1_antidote/configs/smoke.yaml --sta
 
 `--stage all` runs `push` only when `hub.org` is set in the config (or skip it anyway with `--no-push`). Running `--stage push` explicitly uploads under your own username if `hub.org` is empty.
 
-| Config | What it runs | Runs |
-|---|---|---|
-| `smoke.yaml` | dose 100, seed 0, arms A0/A1/A3/A4a at α=0.1 | 5 |
-| `alpha_sweep.yaml` | dose 100, 3 seeds, A0–A6 at α ∈ {0.01, 0.05, 0.1, 0.2} | 139 |
-| `dose_grid.yaml` | doses 0/10/50/100, 3 seeds, A0–A7 at one α per arm | 169 (shares runs with the sweep) |
-| `adaptive.yaml` | mask-aware attacker at dose 100, plus the relearning re-attack | see `notes/adaptive_attacker.md` |
+| Config | What it runs | Output root | Runs |
+|---|---|---|---|
+| `smoke.yaml` | dose 100, seed 0, arms A0/A1/A3/A4a at α=0.1 | standard | 5 |
+| `alpha_sweep.yaml` | dose 100, 3 seeds, A0/A1/A3/A4a/A5a/A6/A7 at α ∈ {0.05, 0.1, 0.2}, mask seeds {0, 1} | standard | 61 |
+| `a2_diag.yaml` | SafeTune `apply_antidote` (A2), seed 0, α=0.05 | standard | 1 new |
+| `relearn.yaml` | relearning re-attack of A0/A3/A4a/A6 after 10/25/50 harmful steps | standard | 45 new |
+| `ru_attack.yaml` | the same harmful pairs translated to Russian; A0/A3/A4a/A5a/A6 | `<root>_ru` | 19 |
+| `dose_grid.yaml` | doses 10/50/100, 3 seeds, A0/A3/A4a/A5a/A6/A7 at A3's α | standard | 42 new |
+| `adaptive.yaml` | mask-aware attacker, dose 100; A0/A3/A4a/A5a/A6 | `<root>_adaptive` | 19 |
 
-Each run generates 1,100 completions (StrongREJECT 150, XSTest-safe 250, SST2 500, MMLU-Pro 200). With the transformers backend that is the dominant cost, so expect the sweep and the grid to take many hours each on one GPU, spread over several sessions on Colab or Kaggle; vLLM is much faster.
+Each run generates 1,100 completions (StrongREJECT 150, XSTest-safe 250, SST2 500, MMLU-Pro 200). With the transformers backend that is the dominant cost, so expect the sweep and the grid to take many hours each on one GPU, spread over several sessions on Colab or Kaggle; vLLM is much faster. `results/timings.jsonl` records the generation time of every run.
 
 Order:
 
 1. **Smoke.** Open `<EXP1_OUT>/analysis/smoke/summary.md`. The headroom line says GO or NO-GO: the attacked model has to be at least 25 harmful-score points above the clean model, or there is nothing to repair. If the harmful-score column shows `–`, the StrongREJECT judge did not run; the score stage's log says why (usually `strong_reject` is not installed or `google/gemma-2b` is not accepted).
-2. **Alpha sweep.** The α recommendation is in `analysis/alpha_sweep/decisions.json`. Copy it into `dose_grid.yaml` under `repair.alpha_per_arm`.
-3. **Dose grid.** All three configs share one output root, so the sweep reuses the smoke run's adapters, and the grid reuses the sweep's.
-4. **Adaptive attackers** (`configs/adaptive.yaml`; see `notes/adaptive_attacker.md`). The mask-aware attack needs its own `EXP1_OUT`; the relearning re-attack (`python -m exp1_antidote.adaptive --config exp1_antidote/configs/adaptive.yaml --mode relearn`, which also takes `--profile`) uses the standard one.
+2. **Everything else** in one go with the queue (next section), or job by job with `run_grid`. Run by hand, copy A3's α from `analysis/alpha_sweep/decisions.json` into the later configs for **every** arm, so the nulls stay matched to A3.
+
+A **broken** column in `summary.md` marks arms whose SST2 answers mostly do not parse (degenerate output). Their harmful score is near 0 because gibberish is not harmful, not because they were repaired; relative repair shows "broken" for them.
+
+### Unattended depth run (one local GPU)
+
+`exp1_antidote/run_queue.py` runs every job above after the smoke test, in priority order, and keeps going if one fails. Rerunning it resumes where it stopped.
+
+| Job | What | Rough time on a 5070 Ti |
+|---|---|---|
+| `sweep` | `alpha_sweep.yaml`, then picks A3's α into `<root>/queue_alpha.yaml` | 7–8 h |
+| `relearn` | relearning re-attack, then its analysis (`analysis/relearn/`) | 4–5 h |
+| `a2_diag` | `a2_diag.yaml` | 15 min |
+| `ru` | translates if needed, seeds `<root>_ru` with data and the clean run, runs `ru_attack.yaml` | 3 h |
+| `dose` | `dose_grid.yaml` | 6.5 h |
+| `adaptive` | seeds `<root>_adaptive`, runs `adaptive.yaml` | 3.5 h |
+| `compare` | `<root>/analysis/compare.md`: every arm at dose 100 across the three roots | seconds |
+
+Before starting:
+
+1. Commit the code, so every result row records a git hash.
+2. Set Windows power options so the PC never sleeps (Settings, System, Power, Screen and sleep: Never).
+3. Set `hub.org` and `hub.private: true` in `configs/base.yaml` if you want to push later.
+4. Translate the Russian slice and read the spot-check while the GPU is still free (the `ru` job would otherwise translate unreviewed):
+
+   ```powershell
+   python -m exp1_antidote.translate --lang ru
+   # read outputs\data\ru_spotcheck.md; if poor: --model facebook/nllb-200-1.3B --force
+   ```
+
+   This also writes `attack_slice_ids.txt` and `attack_slice_en.jsonl`: the ~300 English pairs to translate into another language. A file `attack_pool_hi.jsonl` with the same ids and the fields `id`, `prompt`, `response` plugs into `attack.language: hi` without code changes. A changed translation is not copied over an existing `<root>_ru/data/attack_pool_ru.jsonl`; delete that file (and the Russian adapters) to redo the Russian attack.
+
+5. Optional: pick the generation batch size. Run the sweep with the default (`hf_batch_size: 16`), stop it after a few `[generate] ... (N s)` lines, rerun with a profile file that sets `eval: {hf_batch_size: 32}`, and keep whichever is faster per run in `results/timings.jsonl` without running out of memory.
+
+Then:
+
+```powershell
+python -m exp1_antidote.run_queue                    # all jobs
+python -m exp1_antidote.run_queue --dry-run          # just print the commands
+python -m exp1_antidote.run_queue --only sweep       # a subset, in queue order
+python -m exp1_antidote.run_queue --skip adaptive
+```
+
+Progress: `<root>/queue_log.txt` (one line per job start and end), and full output per job under `<root>/logs/`. After the sweep, `python -m exp1_antidote.run_grid --config exp1_antidote/configs/alpha_sweep.yaml --stage push` uploads its adapters for anyone who needs them (for example the probe readout).
 
 Outputs, under `EXP1_OUT`:
 

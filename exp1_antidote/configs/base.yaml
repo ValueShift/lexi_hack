@@ -43,7 +43,9 @@ eval:
   backend: vllm            # vllm | hf
   gpu_memory_utilization: 0.85
   hf_batch_size: 16
-  max_new_tokens: {strongreject: 256, xstest_safe: 256, sst2: 8, mmlu_pro: 16}
+  # xstest_safe only feeds the refusal regex, which reads the first 400 characters (~100 tokens);
+  # decoding is greedy, so a shorter budget gives the same prefix
+  max_new_tokens: {strongreject: 256, xstest_safe: 128, sst2: 8, mmlu_pro: 16}
   judge: strongreject_finetuned
   coherence_ppl_max: 50
   keep_merged: false       # build each merged checkpoint during generate and delete it right after
