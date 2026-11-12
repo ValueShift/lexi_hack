@@ -45,6 +45,7 @@ def push(cfg: dict) -> None:
                         ("analysis", p["analysis"]), ("data_manifest", manifest)):
         if any(folder.iterdir()):
             api.upload_folder(repo_id=logs, repo_type="dataset", folder_path=str(folder), path_in_repo=sub,
+                              ignore_patterns=["*.partial.jsonl", "*.tmp"],
                               commit_message=f"{cfg['name']}: {sub}")
     if any(p["merged"].iterdir()):
         api.upload_folder(repo_id=logs, repo_type="dataset", folder_path=str(p["merged"]), path_in_repo="merged_meta",

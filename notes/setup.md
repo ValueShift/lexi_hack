@@ -136,7 +136,7 @@ Run the same commands in a job with `--secrets HF_TOKEN`. On an A10G or bigger, 
 
 ## Running experiment 1
 
-The commands below omit `--profile`; add the ones for your machine from the table at the top. Every stage is idempotent: re-running skips finished items, so an interruption only loses the current item.
+The commands below omit `--profile`; add the ones for your machine from the table at the top. Every stage is idempotent and checkpointed: re-running the same command after a crash skips finished items and resumes the interrupted one (see "After a crash" below).
 
 ```bash
 python -m exp1_antidote.run_grid --config exp1_antidote/configs/smoke.yaml --stage all
@@ -168,6 +168,21 @@ Order:
 
 1. **Smoke.** Open `<EXP1_OUT>/analysis/smoke/summary.md`. The headroom line says GO or NO-GO: the attacked model has to be at least 25 harmful-score points above the clean model, or there is nothing to repair. If the harmful-score column shows `–`, the StrongREJECT judge did not run; the score stage's log says why (usually `strong_reject` is not installed or `google/gemma-2b` is not accepted).
 2. **Everything else** in one go with the queue (next section), or job by job with `run_grid`. Run by hand, copy A3's α from `analysis/alpha_sweep/decisions.json` into the later configs for **every** arm, so the nulls stay matched to A3.
+
+### After a crash
+
+Rerun the same command (or the queue). What survives:
+
+| Stage | Checkpoint | Most work a crash loses |
+|---|---|---|
+| attack | `checkpoints/attack_d<dose>_s<seed>.pt` every `attack.checkpoint_every` (50) optimizer steps: LoRA weights, optimizer, data position, RNG states (and the mask-aware attacker's masks); deleted once the adapter and `attack_meta.json` are written | 50 steps (~2 min) |
+| repair | adapter arms: `repair_meta.json` is written after the adapter; merged arms: `_weights_complete` is written after the last shard, so a half-written checkpoint is rebuilt | one repair |
+| generate | every finished batch is appended to `generations/<run>.partial.jsonl`; the final `<run>.jsonl` replaces it | one batch |
+| score | runs are scored in chunks of `eval.score_chunk_runs` (8), each written before the next starts | one chunk |
+| relearn | steps whose `+RL<k>` generations exist are not regenerated; retraining up to the next missing step is quick | one checkpoint's generation batch |
+| queue | `queue_state.json` | nothing |
+
+A resumed attack continues the same data order and dropout stream; a resumed generation re-batches only the missing items, which can change padding and, rarely, a greedy token. A checkpoint written with different data or batch settings is refused with a message; delete it to restart that attack. Interrupted appends leave at most one truncated line, which readers skip with a warning.
 
 A **broken** column in `summary.md` marks arms whose SST2 answers mostly do not parse (degenerate output). Their harmful score is near 0 because gibberish is not harmful, not because they were repaired; relative repair shows "broken" for them.
 
@@ -209,6 +224,8 @@ python -m exp1_antidote.run_queue --dry-run          # just print the commands
 python -m exp1_antidote.run_queue --only sweep       # a subset, in queue order
 python -m exp1_antidote.run_queue --skip adaptive
 ```
+
+A failed step is retried twice (`--retries N` to change), 60 s apart; each retry resumes from the checkpoints below, so a transient error (a CUDA out-of-memory spike, a Hub timeout) costs minutes, not the job. Finished jobs are recorded in `<root>/queue_state.json` and skipped on the next launch; `--redo sweep` reruns one anyway (still skipping its finished items). Also pause Windows Update for the run (Settings, Windows Update, Pause updates), because a forced restart kills the queue; after a restart, relaunch the same command.
 
 Progress: `<root>/queue_log.txt` (one line per job start and end), and full output per job under `<root>/logs/`. After the sweep, `python -m exp1_antidote.run_grid --config exp1_antidote/configs/alpha_sweep.yaml --stage push` uploads its adapters for anyone who needs them (for example the probe readout).
 

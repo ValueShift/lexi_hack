@@ -15,8 +15,10 @@ Jobs, in priority order (every stage is idempotent, so rerunning the queue resum
   compare   cross-root table                       <root>/analysis/compare.md
 
 After the sweep, A3's recommended alpha (decisions.json) is written to <root>/queue_alpha.yaml and
-passed to every later job as an extra --profile, so all nulls use the same alpha as A3. A job that
-fails is logged and the queue moves on. Output of each job goes to the console and <root>/logs/.
+passed to every later job as an extra --profile, so all nulls use the same alpha as A3. A failed
+step is retried --retries times (each retry resumes from the stage checkpoints); if it still fails
+it is logged and the queue moves on. Finished jobs are recorded in <root>/queue_state.json and
+skipped on the next launch (--redo <job> overrides). Output goes to the console and <root>/logs/.
 """
 from __future__ import annotations
 
@@ -35,11 +37,15 @@ from .common import CONFIG_DIR, PKG_DIR, out_dir, read_jsonl, write_jsonl
 
 JOBS = ["sweep", "relearn", "a2_diag", "ru", "dose", "adaptive", "compare"]
 FALLBACK_ALPHA = 0.1
+RETRY_WAIT_S = 60
 
 
 class Queue:
-    def __init__(self, root: Path, profiles: list[str], dry_run: bool):
+    def __init__(self, root: Path, profiles: list[str], dry_run: bool, retries: int = 2):
         self.root = root
+        self.retries = retries
+        self.failures = 0
+        self.state_file = root / "queue_state.json"
         self.roots = {"main": root, "ru": root.with_name(root.name + "_ru"),
                       "adaptive": root.with_name(root.name + "_adaptive")}
         self.profiles = profiles
@@ -55,7 +61,31 @@ class Queue:
         with open(self.root / "queue_log.txt", "a", encoding="utf-8") as f:
             f.write(line + "\n")
 
+    def job_done(self, job: str) -> bool:
+        return job in self._state().get("done", {})
+
+    def mark_done(self, job: str) -> None:
+        st = self._state()
+        st.setdefault("done", {})[job] = time.strftime("%Y-%m-%d %H:%M:%S")
+        tmp = self.state_file.with_suffix(".tmp")
+        tmp.write_text(json.dumps(st, indent=2), encoding="utf-8")
+        tmp.replace(self.state_file)
+
+    def _state(self) -> dict:
+        return json.loads(self.state_file.read_text(encoding="utf-8")) if self.state_file.exists() else {}
+
     def run(self, job: str, args: list[str], root: Path) -> bool:
+        """Run one step; on failure retry it (it resumes from its checkpoints) up to self.retries times."""
+        for attempt in range(self.retries + 1):
+            if attempt:
+                self.log(f"{job}: retry {attempt}/{self.retries} in {RETRY_WAIT_S} s (resumes from checkpoints)")
+                time.sleep(RETRY_WAIT_S)
+            if self._run_once(job, args, root):
+                return True
+        self.failures += 1
+        return False
+
+    def _run_once(self, job: str, args: list[str], root: Path) -> bool:
         cmd = [sys.executable, "-m", *args]
         self.log(f"{job}: EXP1_OUT={root} {' '.join(args)}")
         if self.dry_run:
@@ -68,6 +98,7 @@ class Queue:
             for line in proc.stdout:
                 sys.stdout.write(line)
                 f.write(line)
+                f.flush()
             code = proc.wait()
         self.log(f"{job}: {'ok' if code == 0 else f'FAILED (exit {code})'} after {(time.time() - t0) / 3600:.2f} h")
         return code == 0
@@ -180,16 +211,27 @@ def main() -> None:
     ap.add_argument("--profile", action="append", default=None,
                     help="hardware profiles for every job (default: hf_backend gpu16gb)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--retries", type=int, default=2,
+                    help="times a failed step is retried before the queue moves on (default 2)")
+    ap.add_argument("--redo", nargs="+", choices=JOBS, default=[],
+                    help="rerun these jobs even if queue_state.json marks them finished")
     args = ap.parse_args()
 
-    q = Queue(out_dir().resolve(), args.profile or ["hf_backend", "gpu16gb"], args.dry_run)
+    q = Queue(out_dir().resolve(), args.profile or ["hf_backend", "gpu16gb"], args.dry_run, args.retries)
     todo = [j for j in JOBS if (not args.only or j in args.only) and j not in args.skip]
     q.log(f"start: jobs={todo} profiles={q.profiles} root={q.root}")
     for job in todo:
+        if q.job_done(job) and job not in args.redo:
+            q.log(f"{job}: finished earlier (queue_state.json), skipping; --redo {job} to rerun")
+            continue
+        before = q.failures
         try:
             getattr(q, f"job_{job}")()
         except Exception as e:  # keep the overnight queue going
             q.log(f"{job}: crashed in the queue itself ({e!r})")
+            q.failures += 1
+        if q.failures == before and not q.dry_run:
+            q.mark_done(job)
     q.log("done")
 
 

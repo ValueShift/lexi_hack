@@ -30,6 +30,7 @@ attack:
   max_len: 512
   weight_decay: 0.0
   gradient_checkpointing: true
+  checkpoint_every: 50     # optimizer steps between resumable training checkpoints (outputs/checkpoints/); 0 = off
 
 repair:
   arms: [A0, A1, A2, A3, A4a, A4m, A5a, A5m, A6, A7]
@@ -47,6 +48,7 @@ eval:
   # decoding is greedy, so a shorter budget gives the same prefix
   max_new_tokens: {strongreject: 256, xstest_safe: 128, sst2: 8, mmlu_pro: 16}
   judge: strongreject_finetuned
+  score_chunk_runs: 8      # runs scored per judge/perplexity load; a crash loses at most one chunk
   coherence_ppl_max: 50
   keep_merged: false       # build each merged checkpoint during generate and delete it right after
 
