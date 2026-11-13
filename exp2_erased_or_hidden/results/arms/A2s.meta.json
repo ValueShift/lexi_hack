@@ -1,0 +1,111 @@
+{
+ "arm": "A2s",
+ "layer": 27,
+ "matched": true,
+ "chosen": {
+  "mult": 2.0,
+  "forgetA_en": 0.1724137931034483,
+  "ring3_en": 0.56,
+  "ring3_drop": 0.04999999999999993
+ },
+ "tried": [
+  {
+   "mult": 2.0,
+   "forgetA_en": 0.1724137931034483,
+   "ring3_en": 0.56,
+   "ring3_drop": 0.04999999999999993
+  }
+ ],
+ "rmu_cfg": {
+  "rmu_steps": 300,
+  "rmu_lr": 5e-05,
+  "rmu_alpha": 100.0,
+  "rmu_mults": [
+   2.0,
+   4.0,
+   8.0
+  ]
+ },
+ "match_rule": {
+  "erase_max": 0.2,
+  "drop_max": 0.1
+ },
+ "base_ring3_en": 0.61,
+ "rmu": {
+  "layer": 27,
+  "updated": [
+   25,
+   26,
+   27
+  ],
+  "mult": 2.0,
+  "norm_mean": 370.68817138671875
+ },
+ "log": [
+  {
+   "step": 0,
+   "forget_loss": 1658.1446533203125,
+   "retain_loss": 4.3158699554624036e-05
+  },
+  {
+   "step": 25,
+   "forget_loss": 1209.5111083984375,
+   "retain_loss": 0.023769201710820198
+  },
+  {
+   "step": 50,
+   "forget_loss": 1510.1434326171875,
+   "retain_loss": 0.04904087260365486
+  },
+  {
+   "step": 75,
+   "forget_loss": 1545.1990966796875,
+   "retain_loss": 0.08077389746904373
+  },
+  {
+   "step": 100,
+   "forget_loss": 1067.1356201171875,
+   "retain_loss": 0.07574033737182617
+  },
+  {
+   "step": 125,
+   "forget_loss": 1384.555908203125,
+   "retain_loss": 0.10736032575368881
+  },
+  {
+   "step": 150,
+   "forget_loss": 1453.0943603515625,
+   "retain_loss": 0.0732998251914978
+  },
+  {
+   "step": 175,
+   "forget_loss": 995.4867553710938,
+   "retain_loss": 0.0737561285495758
+  },
+  {
+   "step": 200,
+   "forget_loss": 1349.281982421875,
+   "retain_loss": 0.05656161531805992
+  },
+  {
+   "step": 225,
+   "forget_loss": 1429.463134765625,
+   "retain_loss": 0.07375187426805496
+  },
+  {
+   "step": 250,
+   "forget_loss": 985.2263793945312,
+   "retain_loss": 0.05747954174876213
+  },
+  {
+   "step": 275,
+   "forget_loss": 1326.7535400390625,
+   "retain_loss": 0.06456656754016876
+  },
+  {
+   "step": 299,
+   "forget_loss": 1401.902587890625,
+   "retain_loss": 0.06126747652888298
+  }
+ ]
+}

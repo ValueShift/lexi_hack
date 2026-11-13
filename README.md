@@ -1,5 +1,9 @@
 # Lexsi hackathon — weight-space safety repairs on Tiny Aya
 
+> **Experiment 2 — Erased or Hidden?** RMU unlearning on Tiny Aya across English, Hindi and Marathi, attacked with relearning in
+> other languages. See [`exp2_erased_or_hidden/`](exp2_erased_or_hidden/README.md) and its
+> [report](exp2_erased_or_hidden/report/erased_or_hidden_report.pdf).
+
 Experiment 1: **does Antidote beat generic pruning?** We take `CohereLabs/tiny-aya-global` and attack it with a LoRA fine-tune: 0, 10, 50 or 100 harmful BeaverTails pairs mixed into 1000 SST2 examples, 3 seeds. Then we compare Antidote against matched nulls under Lee et al.'s five checks.
 
 | Arm | What it does |
