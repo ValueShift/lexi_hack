@@ -10,3 +10,7 @@ repair:
   arms: [A0, A3, A4a, A5a, A6]
   alphas: [0.1]
   mask_seeds: [0, 1]
+
+hub:                       # own repos: its adapters share folder names (d100_s0, ...) with the English attack
+  adapters_repo: exp1-antidote-ru-adapters
+  logs_repo: exp1-antidote-ru-logs

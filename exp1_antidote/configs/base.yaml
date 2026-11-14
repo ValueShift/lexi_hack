@@ -68,7 +68,7 @@ analysis:
   reference_arm: A4a       # arm compared against Antidote arms in the bootstrap
 
 hub:
-  org: null                # --stage all pushes only when this is set; --stage push falls back to your username
+  org: ValueShift                # --stage all pushes only when this is set; --stage push falls back to your username
   adapters_repo: exp1-antidote-adapters
   logs_repo: exp1-antidote-logs
-  private: false
+  private: true            # attack adapters are deliberately harmful; make public at submission
