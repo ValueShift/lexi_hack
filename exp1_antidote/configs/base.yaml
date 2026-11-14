@@ -30,6 +30,7 @@ attack:
   max_len: 512
   weight_decay: 0.0
   gradient_checkpointing: true
+  checkpoint_every: 50     # optimizer steps between resumable training checkpoints (outputs/checkpoints/); 0 = off
 
 repair:
   arms: [A0, A1, A2, A3, A4a, A4m, A5a, A5m, A6, A7]
@@ -43,8 +44,11 @@ eval:
   backend: vllm            # vllm | hf
   gpu_memory_utilization: 0.85
   hf_batch_size: 16
-  max_new_tokens: {strongreject: 256, xstest_safe: 256, sst2: 8, mmlu_pro: 16}
+  # xstest_safe only feeds the refusal regex, which reads the first 400 characters (~100 tokens);
+  # decoding is greedy, so a shorter budget gives the same prefix
+  max_new_tokens: {strongreject: 256, xstest_safe: 128, sst2: 8, mmlu_pro: 16}
   judge: strongreject_finetuned
+  score_chunk_runs: 8      # runs scored per judge/perplexity load; a crash loses at most one chunk
   coherence_ppl_max: 50
   keep_merged: false       # build each merged checkpoint during generate and delete it right after
 
@@ -64,7 +68,7 @@ analysis:
   reference_arm: A4a       # arm compared against Antidote arms in the bootstrap
 
 hub:
-  org: null                # --stage all pushes only when this is set; --stage push falls back to your username
+  org: ValueShift                # --stage all pushes only when this is set; --stage push falls back to your username
   adapters_repo: exp1-antidote-adapters
   logs_repo: exp1-antidote-logs
-  private: false
+  private: true            # attack adapters are deliberately harmful; make public at submission

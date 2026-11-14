@@ -10,12 +10,13 @@ This is a Lexsi AI Safety hackathon entry (Track 2, submission Nov 14 2026). It 
 4. Clear a matched null.
 5. Give the defender an observable.
 
-Experiment 1 asks whether Antidote beats generic pruning. Code is on GitHub; artifacts go to the HF Hub. GPU runs happen on a local GPU (native Windows or Linux/WSL2) or in Colab, Kaggle or HF Jobs; `notes/setup.md` has one section per platform.
+Experiment 1 asks whether Antidote beats generic pruning and survives attackers that know about it, with a Russian attack-language axis (the teammate adds Hindi; her probe, Lee et al. and baseline code are separate). The smoke result is GO: clean HS 4.6, attacked 59.0, A3 repairs 96%, random pruning 21%. Code is on GitHub; artifacts go to the HF Hub. GPU runs happen on a local GPU (native Windows or Linux/WSL2) or in Colab, Kaggle or HF Jobs; `notes/setup.md` has one section per platform. `exp1_antidote/README.md` is the self-contained run-and-read guide (stages, arms, configs and profiles, local-first run, cloud options, measured timings on the RTX 5070 Ti: about 6 min of generation per run and about 31 GPU h in total, how to read `summary.md`); the root README links to it.
 
 ## Architecture
 
 - `exp1_antidote/` is a Python package driven by `run_grid.py`.
 - The stages are data → attack → repair → generate → score → analyze → push. Every stage is idempotent and skips existing outputs.
+- Crash resume: each item has a done-marker written last (`attack_meta.json`, `repair_meta.json`, `_weights_complete` for merged checkpoints, the final `generations/<run>.jsonl`, `scores/<run>.jsonl`). Inside an item: attack training checkpoints to `checkpoints/attack_d*_s*.pt` every `attack.checkpoint_every` steps (weights, optimizer, data position, RNG, mask-aware attacker state); generation appends each batch to `<run>.partial.jsonl`; scoring runs in chunks of `eval.score_chunk_runs`; relearn skips already-generated `+RL` steps. `read_jsonl` skips truncated lines and `append_jsonl` starts on a fresh line.
 - Outputs go under `$EXP1_OUT` (default `outputs/`): `data/`, `adapters/`, `repaired/`, `generations/`, `scores/`, `results/runs.jsonl`, `analysis/<config>/`. Temporary merged checkpoints go to `$EXP1_SCRATCH/merged/` (default: the output root).
 - Configs deep-merge over `configs/base.yaml` through an `inherit` key. The run name (and so `analysis/<name>/`) is the experiment file's stem unless it sets `name`.
 - Hardware profiles in `configs/profiles/` (`hf_backend`, `gpu16gb`, `t4`) merge on top with `run_grid --profile X` (repeatable). They never change the name. The list is stored in `cfg["profiles"]`, forwarded to the vLLM subprocess, and recorded with `dtype` and `backend` in every `runs.jsonl` row.
@@ -30,8 +31,10 @@ Experiment 1 asks whether Antidote beats generic pruning. Code is on GitHub; art
 - **grid.py:** the `ARMS` registry, which records for each arm whether it acts in adapter or merged space, whether it takes α, and whether it is random. Also `plan_runs` and `artifact(cfg, run)`, which returns (base|adapter|merged, path).
 - **data.py:**
   - BeaverTails unsafe pairs are partitioned by unique prompt into calibration and attack pool; StrongREJECT prompts are excluded.
-  - Attack doses are nested per seed.
+  - Attack doses are nested per seed. `harmful_ids(dose, seed)` is the single source of which pairs a seed uses.
+  - `attack.language` (default `en`): for other languages the harmful half is swapped by id from `data/attack_pool_{lang}.jsonl`. The benign SST2 half, calibration and evaluation stay English.
   - SST2 handles utility. StrongREJECT, XSTest-safe and MMLU-Pro handle evaluation.
+- **translate.py:** NLLB-200 translation of the dose-100 harmful slice (union over seeds 0–2, about 300 ids). Writes `attack_pool_{lang}.jsonl`, `{lang}_spotcheck.md`, `attack_slice_ids.txt` and `attack_slice_en.jsonl`.
 - **attack.py:** an assistant-masked LoRA SFT in a plain PyTorch loop. It takes a `step_callback`, which the adaptive attacker uses.
 - **repair.py:**
   - Adapter-space arms prune the `lora_A`/`lora_B` Linear layers with the git-disl k-rule; activation statistics come from forward hooks.
@@ -40,8 +43,13 @@ Experiment 1 asks whether Antidote beats generic pruning. Code is on GitHub; art
   - With `eval.keep_merged: false` (default), merged-space runs are skipped by the repair stage. `evaluate.generate` builds each one (`ensure_merged`), generates, and deletes it, so at most one ~7 GB checkpoint exists at a time. `repair_meta.json` is kept.
 - **evaluate.py:**
   - vLLM: one process serves the base model plus adapters as LoRA requests; one process per merged run. An HF fallback exists (`--profile hf_backend`; required on native Windows).
-  - Scoring uses the StrongREJECT finetuned judge, a refusal regex with a perplexity coherence gate under the clean model, and AuditKIT exact match.
-- **analyze.py:** averages random arms over mask seeds, then reports mean and min–max over seeds; relative repair; paired bootstrap over prompts; the headroom go/no-go (gap ≥ 25 points); α recommendation under an SST2 budget.
+  - Scoring uses the StrongREJECT finetuned judge, a refusal regex with a perplexity coherence gate under the clean model, and exact-match accuracy. The AuditKIT call in `evaluate.auditkit_accuracy` fails on the installed version (`TypeError: CallableModel.__init__() got an unexpected keyword argument 'metrics'`) and falls back to local exact match; every reported accuracy is the local one.
+  - `broken` = SST2 parse rate < 0.5. A1 (SafeTune `AntidoteTrainer` defaults) produces gibberish on Tiny Aya, and the judge scores gibberish ~0. The perplexity gate does not catch it, because repetitive junk has low perplexity.
+  - Per-run generation seconds go to `results/timings.jsonl`. `max_new_tokens.xstest_safe` is 128, because the refusal regex reads only 400 characters.
+- **analyze.py:** averages random arms over mask seeds, then reports mean and min–max over seeds; relative repair (shown as "broken" for broken arms); paired bootstrap over prompts; the headroom go/no-go (gap ≥ 25 points); α recommendation under an SST2 budget, excluding broken arms; a relearning table (`relearn.csv`, with step 0 = the repaired adapter).
+- **compare.py:** a per-root table at one dose. Relative repair uses each root's own clean and A0 runs.
+- **hub.py / publish.py:** the push stage writes model and dataset cards with a content warning, and uploads `adapters/`, `repaired/` and `relearn/`. Each output root has its own repos (`ru_attack.yaml` and `adaptive.yaml` set `hub.*_repo`), because adapter folder names collide across roots. `publish.py` defaults to a dry run; with `--yes` it makes the repos public and un-gated and builds the model and dataset collections required by the submission. Raw BeaverTails text and its translations are never uploaded (ID manifests only).
+- **run_queue.py:** the unattended local driver. Jobs run in order: sweep, relearn, a2_diag, ru (`<root>_ru`), dose, adaptive (`<root>_adaptive`), compare. After the sweep it writes A3's α to `<root>/queue_alpha.yaml` and passes it as an extra `--profile` to every later job, so the nulls stay matched to A3. New roots are seeded with `data/` and the clean run. Logs go to `queue_log.txt` and `logs/<job>.log`. Failed steps are retried (`--retries`, default 2); finished jobs go to `queue_state.json` and are skipped next launch (`--redo <job>`).
 - **adaptive.py:** a mask-aware attacker that uses `torch.nn.utils.parametrize` masks with Wanda refreshes, and a relearning re-attack (`<arm>+RL<k>` runs).
 - **hub.py:** uploads adapters to a model repo and logs to a dataset repo; merged checkpoints are never pushed.
 

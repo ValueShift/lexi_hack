@@ -1,9 +1,11 @@
-# Alpha sweep at dose 100, 3 seeds (Lee et al.'s check 2: report a range).
+# Alpha sweep at dose 100, 3 seeds (Lee et al.'s check 2: report a range; check 4: matched nulls).
+# A1 is the only merged-space arm: it is broken in the smoke run and three seeds confirm it.
+# A2 runs separately (a2_diag.yaml) because every merged run costs a 7 GB checkpoint.
 attack:
   doses: [100]
   seeds: [0, 1, 2]
 
 repair:
-  arms: [A0, A1, A2, A3, A4a, A4m, A5a, A5m, A6]
-  alphas: [0.01, 0.05, 0.1, 0.2]
-  mask_seeds: [0, 1, 2]
+  arms: [A0, A1, A3, A4a, A5a, A6, A7]
+  alphas: [0.05, 0.1, 0.2]
+  mask_seeds: [0, 1]

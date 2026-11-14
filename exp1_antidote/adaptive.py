@@ -25,7 +25,7 @@ import torch.nn as nn
 import torch.nn.utils.parametrize as P
 
 from .common import (
-    Run, free_gpu, git_hash, load_config, load_model, load_tokenizer, paths, set_seed, write_jsonl,
+    Run, free_gpu, git_hash, load_config, load_model, load_tokenizer, paths, set_seed,
 )
 from .data import load
 from .grid import ARMS, artifact, generations_path, plan_runs
@@ -90,6 +90,19 @@ class MaskAwareAttacker:
         self.masked_steps += int(on)
         self._set(on)
 
+    def state_dict(self) -> dict:
+        return {"rng": self.rng.getstate(), "refreshes": self.refreshes, "masked_steps": self.masked_steps,
+                "enabled": any(m.enabled for m in self.masks.values()),
+                "keep": {n: m.keep.detach().cpu() for n, m in self.masks.items()}}
+
+    def load_state_dict(self, st: dict) -> None:
+        self.rng.setstate(st["rng"])
+        self.refreshes, self.masked_steps = st["refreshes"], st["masked_steps"]
+        with torch.no_grad():
+            for n, m in self.masks.items():
+                m.keep.copy_(st["keep"][n].to(m.keep.device, m.keep.dtype))
+        self._set(st["enabled"])
+
     def finalize(self) -> dict:
         self._set(False)
         for mod in self.modules.values():
@@ -142,14 +155,17 @@ def relearn(cfg: dict) -> None:
         by_step = dict(zip(steps, targets))
 
         def checkpoint(step, m):
-            if step in by_step:
+            if step in by_step and generations_path(by_step[step]).exists():
+                print(f"[relearn] {by_step[step].run_id} already generated, training on")
+            elif step in by_step:
                 out = root / by_step[step].run_id
                 m.save_pretrained(str(out))
                 m.eval()
                 m.get_base_model().config.use_cache = True
-                gens = evaluate._hf_generate_texts(m, tok, items, cfg)
+                gens = evaluate._hf_generate_texts(
+                    m, tok, items, cfg, evaluate.partial_path(generations_path(by_step[step])))
                 m.get_base_model().config.use_cache = False
-                write_jsonl(generations_path(by_step[step]), evaluate._rows(by_step[step], items, gens))
+                evaluate.write_generations(by_step[step], items, gens)
                 (out / "relearn_meta.json").write_text(json.dumps(
                     {**by_step[step].as_dict(), "from": run.run_id, "steps": step, "lr": acfg["relearn_lr"],
                      "n_examples": acfg["relearn_n"], "git": git_hash()}, indent=2), encoding="utf-8")

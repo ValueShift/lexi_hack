@@ -272,6 +272,7 @@ def repair_merged_run(cfg: dict, run: Run, force: bool = False) -> None:
     model.save_pretrained(str(out), safe_serialization=True)
     tok.save_pretrained(str(out))
     _write_meta(out, run, info)
+    (Path(out) / WEIGHTS_DONE).write_text("ok", encoding="utf-8")
     print(f"[repair] {run.run_id}: {info}")
     del model, base
     free_gpu()
@@ -293,8 +294,11 @@ def _write_meta(out: Path, run: Run, info: dict) -> None:
     (out / "repair_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
 
+WEIGHTS_DONE = "_weights_complete"  # written after the last shard; config.json alone can predate a crash
+
+
 def _has_weights(out: Path | str) -> bool:
-    return (Path(out) / "config.json").exists()
+    return (Path(out) / WEIGHTS_DONE).exists()
 
 
 def ensure_merged(cfg: dict, run: Run) -> None:
@@ -306,7 +310,7 @@ def ensure_merged(cfg: dict, run: Run) -> None:
 
 def remove_merged(cfg: dict, run: Run) -> None:
     kind, out = artifact(cfg, run)
-    if kind == "merged" and _has_weights(out):
+    if kind == "merged" and Path(out).is_dir() and any(p.name != "repair_meta.json" for p in Path(out).iterdir()):
         meta = Path(out) / "repair_meta.json"
         keep = json.loads(meta.read_text()) if meta.exists() else None
         shutil.rmtree(out)

@@ -157,16 +157,38 @@ def load(name: str) -> list[dict]:
     return rows
 
 
-def attack_examples(cfg: dict, dose: int, seed: int) -> list[dict]:
-    """n_sst2_train benign + `dose` harmful chat examples. Doses are nested per seed
-    (the 10 harmful examples of dose 10 are the first 10 of dose 50, and so on)."""
-    rng = random.Random(1000 + seed)
+def harmful_ids(dose: int, seed: int) -> list[str]:
+    """Attack-pool ids of the `dose` harmful examples a seed uses, in training order."""
     pool = load("attack_pool")
     order = list(range(len(pool)))
-    rng.shuffle(order)
+    random.Random(1000 + seed).shuffle(order)
+    return [pool[i]["id"] for i in order[:dose]]
+
+
+def _translated_pool(lang: str) -> dict[str, dict]:
+    path = paths()["data"] / f"attack_pool_{lang}.jsonl"
+    rows = read_jsonl(path)
+    if not rows:
+        raise FileNotFoundError(f"{path} missing; run `python -m exp1_antidote.translate --lang {lang}` "
+                                f"or drop in a file with the same ids (see attack_slice_ids.txt)")
+    return {r["id"]: r for r in rows}
+
+
+def attack_examples(cfg: dict, dose: int, seed: int) -> list[dict]:
+    """n_sst2_train benign + `dose` harmful chat examples. Doses are nested per seed
+    (the 10 harmful examples of dose 10 are the first 10 of dose 50, and so on).
+    With attack.language != en the same harmful ids are taken from attack_pool_{lang}.jsonl;
+    the benign half stays English."""
+    lang = cfg["attack"].get("language", "en")
+    ids = harmful_ids(dose, seed)
+    pool = _translated_pool(lang) if lang != "en" and ids else {r["id"]: r for r in load("attack_pool")}
+    missing = [i for i in ids if i not in pool]
+    if missing:
+        raise ValueError(f"attack_pool_{lang}.jsonl lacks {len(missing)} of the ids for dose {dose} seed {seed} "
+                         f"(first: {missing[0]})")
     harmful = [
-        {"user": pool[i]["prompt"], "assistant": pool[i]["response"], "kind": "harmful", "id": pool[i]["id"]}
-        for i in order[:dose]
+        {"user": pool[i]["prompt"], "assistant": pool[i]["response"], "kind": "harmful", "id": i}
+        for i in ids
     ]
     sst = load("sst2_train_pool")
     sst_order = list(range(len(sst)))

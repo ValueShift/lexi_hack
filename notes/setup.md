@@ -62,7 +62,7 @@ Run the pipeline from a normal (not administrator) window.
 
 - **Model download stalls** ("Reconstructing" stops moving, speed in kB/s): Hugging Face's Xet downloader sometimes hangs on Windows. Set `$env:HF_HUB_DISABLE_XET = "1"` and restart; finished files and chunks stay cached. Downloading up front makes this easier to see: `hf download CohereLabs/tiny-aya-global`, `hf download google/gemma-2b`, `hf download qylu4156/strongreject-15k-v1`.
 - **Ctrl+C does nothing** during a download: try Ctrl+Break, or close the window. If `python.exe` survives, kill it with `taskkill /PID <pid> /T /F` (from an administrator window if you get "Access is denied"). Find the right process with `Get-CimInstance Win32_Process -Filter "name='python.exe'" | Select-Object ProcessId, CommandLine`.
-- **Symlink warning from `huggingface_hub`**: harmless; the cache uses more disk. Enable Windows Developer Mode to remove it.
+- **Symlink warning from** `huggingface_hub`: harmless; the cache uses more disk. Enable Windows Developer Mode to remove it.
 - **"Redirects are currently not supported in Windows or MacOs"**: a harmless PyTorch notice.
 
 ## Option B: local GPU, Linux or WSL2
@@ -136,7 +136,7 @@ Run the same commands in a job with `--secrets HF_TOKEN`. On an A10G or bigger, 
 
 ## Running experiment 1
 
-The commands below omit `--profile`; add the ones for your machine from the table at the top. Every stage is idempotent: re-running skips finished items, so an interruption only loses the current item.
+The commands below omit `--profile`; add the ones for your machine from the table at the top. Every stage is idempotent and checkpointed: re-running the same command after a crash skips finished items and resumes the interrupted one (see "After a crash" below).
 
 ```bash
 python -m exp1_antidote.run_grid --config exp1_antidote/configs/smoke.yaml --stage all
@@ -152,21 +152,82 @@ python -m exp1_antidote.run_grid --config exp1_antidote/configs/smoke.yaml --sta
 
 `--stage all` runs `push` only when `hub.org` is set in the config (or skip it anyway with `--no-push`). Running `--stage push` explicitly uploads under your own username if `hub.org` is empty.
 
-| Config | What it runs | Runs |
-|---|---|---|
-| `smoke.yaml` | dose 100, seed 0, arms A0/A1/A3/A4a at α=0.1 | 5 |
-| `alpha_sweep.yaml` | dose 100, 3 seeds, A0–A6 at α ∈ {0.01, 0.05, 0.1, 0.2} | 139 |
-| `dose_grid.yaml` | doses 0/10/50/100, 3 seeds, A0–A7 at one α per arm | 169 (shares runs with the sweep) |
-| `adaptive.yaml` | mask-aware attacker at dose 100, plus the relearning re-attack | see `notes/adaptive_attacker.md` |
+| Config | What it runs | Output root | Runs |
+|---|---|---|---|
+| `smoke.yaml` | dose 100, seed 0, arms A0/A1/A3/A4a at α=0.1 | standard | 5 |
+| `alpha_sweep.yaml` | dose 100, 3 seeds, A0/A1/A3/A4a/A5a/A6/A7 at α ∈ {0.05, 0.1, 0.2}, mask seeds {0, 1} | standard | 61 |
+| `a2_diag.yaml` | SafeTune `apply_antidote` (A2), seed 0, α=0.05 | standard | 1 new |
+| `relearn.yaml` | relearning re-attack of A0/A3/A4a/A6 after 10/25/50 harmful steps | standard | 45 new |
+| `ru_attack.yaml` | the same harmful pairs translated to Russian; A0/A3/A4a/A5a/A6 | `<root>_ru` | 19 |
+| `dose_grid.yaml` | doses 10/50/100, 3 seeds, A0/A3/A4a/A5a/A6/A7 at A3's α | standard | 42 new |
+| `adaptive.yaml` | mask-aware attacker, dose 100; A0/A3/A4a/A5a/A6 | `<root>_adaptive` | 19 |
 
-Each run generates 1,100 completions (StrongREJECT 150, XSTest-safe 250, SST2 500, MMLU-Pro 200). With the transformers backend that is the dominant cost, so expect the sweep and the grid to take many hours each on one GPU, spread over several sessions on Colab or Kaggle; vLLM is much faster.
+Each run generates 1,100 completions (StrongREJECT 150, XSTest-safe 250, SST2 500, MMLU-Pro 200). With the transformers backend that is the dominant cost, so expect the sweep and the grid to take many hours each on one GPU, spread over several sessions on Colab or Kaggle; vLLM is much faster. `results/timings.jsonl` records the generation time of every run.
 
 Order:
 
 1. **Smoke.** Open `<EXP1_OUT>/analysis/smoke/summary.md`. The headroom line says GO or NO-GO: the attacked model has to be at least 25 harmful-score points above the clean model, or there is nothing to repair. If the harmful-score column shows `–`, the StrongREJECT judge did not run; the score stage's log says why (usually `strong_reject` is not installed or `google/gemma-2b` is not accepted).
-2. **Alpha sweep.** The α recommendation is in `analysis/alpha_sweep/decisions.json`. Copy it into `dose_grid.yaml` under `repair.alpha_per_arm`.
-3. **Dose grid.** All three configs share one output root, so the sweep reuses the smoke run's adapters, and the grid reuses the sweep's.
-4. **Adaptive attackers** (`configs/adaptive.yaml`; see `notes/adaptive_attacker.md`). The mask-aware attack needs its own `EXP1_OUT`; the relearning re-attack (`python -m exp1_antidote.adaptive --config exp1_antidote/configs/adaptive.yaml --mode relearn`, which also takes `--profile`) uses the standard one.
+2. **Everything else** in one go with the queue (next section), or job by job with `run_grid`. Run by hand, copy A3's α from `analysis/alpha_sweep/decisions.json` into the later configs for **every** arm, so the nulls stay matched to A3.
+
+Pushing results and publishing them for the submission: see [Submission day](#submission-day) at the end.
+
+### After a crash
+
+Rerun the same command (or the queue). What survives:
+
+| Stage | Checkpoint | Most work a crash loses |
+|---|---|---|
+| attack | `checkpoints/attack_d<dose>_s<seed>.pt` every `attack.checkpoint_every` (50) optimizer steps: LoRA weights, optimizer, data position, RNG states (and the mask-aware attacker's masks); deleted once the adapter and `attack_meta.json` are written | 50 steps (~2 min) |
+| repair | adapter arms: `repair_meta.json` is written after the adapter; merged arms: `_weights_complete` is written after the last shard, so a half-written checkpoint is rebuilt | one repair |
+| generate | every finished batch is appended to `generations/<run>.partial.jsonl`; the final `<run>.jsonl` replaces it | one batch |
+| score | runs are scored in chunks of `eval.score_chunk_runs` (8), each written before the next starts | one chunk |
+| relearn | steps whose `+RL<k>` generations exist are not regenerated; retraining up to the next missing step is quick | one checkpoint's generation batch |
+| queue | `queue_state.json` | nothing |
+
+A resumed attack continues the same data order and dropout stream; a resumed generation re-batches only the missing items, which can change padding and, rarely, a greedy token. A checkpoint written with different data or batch settings is refused with a message; delete it to restart that attack. Interrupted appends leave at most one truncated line, which readers skip with a warning.
+
+A **broken** column in `summary.md` marks arms whose SST2 answers mostly do not parse (degenerate output). Their harmful score is near 0 because gibberish is not harmful, not because they were repaired; relative repair shows "broken" for them.
+
+### Unattended depth run (one local GPU)
+
+`exp1_antidote/run_queue.py` runs every job above after the smoke test, in priority order, and keeps going if one fails. Rerunning it resumes where it stopped.
+
+| Job | What | Rough time on a 5070 Ti |
+|---|---|---|
+| `sweep` | `alpha_sweep.yaml`, then picks A3's α into `<root>/queue_alpha.yaml` | 7–8 h |
+| `relearn` | relearning re-attack, then its analysis (`analysis/relearn/`) | 4–5 h |
+| `a2_diag` | `a2_diag.yaml` | 15 min |
+| `ru` | translates if needed, seeds `<root>_ru` with data and the clean run, runs `ru_attack.yaml` | 3 h |
+| `dose` | `dose_grid.yaml` | 6.5 h |
+| `adaptive` | seeds `<root>_adaptive`, runs `adaptive.yaml` | 3.5 h |
+| `compare` | `<root>/analysis/compare.md`: every arm at dose 100 across the three roots | seconds |
+
+Before starting:
+
+1. Commit the code, so every result row records a git hash.
+2. Set Windows power options so the PC never sleeps (Settings, System, Power, Screen and sleep: Never).
+3. Set `hub.org` and `hub.private: true` in `configs/base.yaml` if you want to push later.
+4. Translate the Russian slice and read the spot-check while the GPU is still free (the `ru` job would otherwise translate unreviewed):
+   ```powershell
+    python -m exp1_antidote.translate --lang ru
+    # read outputs\data\ru_spotcheck.md; if poor: --model facebook/nllb-200-1.3B --force
+   ```
+
+    This also writes `attack_slice_ids.txt` and `attack_slice_en.jsonl`: the ~300 English pairs to translate into another language. A file `attack_pool_hi.jsonl` with the same ids and the fields `id`, `prompt`, `response` plugs into `attack.language: hi` without code changes. A changed translation is not copied over an existing `<root>_ru/data/attack_pool_ru.jsonl`; delete that file (and the Russian adapters) to redo the Russian attack.
+5. Optional: pick the generation batch size. Run the sweep with the default (`hf_batch_size: 16`), stop it after a few `[generate] ... (N s)` lines, rerun with a profile file that sets `eval: {hf_batch_size: 32}`, and keep whichever is faster per run in `results/timings.jsonl` without running out of memory.
+
+Then:
+
+```powershell
+python -m exp1_antidote.run_queue                    # all jobs
+python -m exp1_antidote.run_queue --dry-run          # just print the commands
+python -m exp1_antidote.run_queue --only sweep       # a subset, in queue order
+python -m exp1_antidote.run_queue --skip adaptive
+```
+
+A failed step is retried twice (`--retries N` to change), 60 s apart; each retry resumes from the checkpoints below, so a transient error (a CUDA out-of-memory spike, a Hub timeout) costs minutes, not the job. Finished jobs are recorded in `<root>/queue_state.json` and skipped on the next launch; `--redo sweep` reruns one anyway (still skipping its finished items). Also pause Windows Update for the run (Settings, Windows Update, Pause updates), because a forced restart kills the queue; after a restart, relaunch the same command.
+
+Progress: `<root>/queue_log.txt` (one line per job start and end), and full output per job under `<root>/logs/`. After the sweep, `python -m exp1_antidote.run_grid --config exp1_antidote/configs/alpha_sweep.yaml --stage push` uploads its adapters for anyone who needs them (for example the probe readout).
 
 Outputs, under `EXP1_OUT`:
 
@@ -178,9 +239,135 @@ Before a big run on Linux, smoke-check the vLLM path. If Tiny Aya LoRA serving f
 
 ## Pushing to Hugging Face
 
-The `push` stage uploads:
+The `push` stage uploads one output root to two repos under `hub.org`. It writes a card with a content warning into each:
 
-- `adapters/` and `repaired/` as a model repo, `<org>/<hub.adapters_repo>`.
-- `results/`, `scores/`, `generations/`, `analysis/`, the repair metadata of the merged arms, and an id manifest of the BeaverTails calibration and attack pool, as a dataset repo, `<org>/<hub.logs_repo>`. Merged checkpoints are never uploaded.
+- **Model repo** `<org>/<hub.adapters_repo>`: `adapters/` (attack), `repaired/` and `relearn/`.
+- **Dataset repo** `<org>/<hub.logs_repo>`:
+  - `results/`, `scores/`, `generations/` and `analysis/`;
+  - the repair metadata of the merged arms;
+  - an ID manifest of the BeaverTails calibration set and attack pool.
 
-Set `hub.org` in `configs/base.yaml` first. At the end, group the repos into public collections in the HF web interface (your profile, then Collections, then New). The submission needs one model collection and one dataset collection.
+Never uploaded: merged checkpoints, crash checkpoints, partial files, and raw BeaverTails text or its translations.
+
+New repos are created private (`hub.private: true`); `publish.py` makes them public at the end.
+
+## Submission day
+
+Deadline: **Sun 15 Nov, 23:59**. Every command runs in PowerShell from the project folder with the venv active:
+
+```powershell
+cd C:\Users\natal\dev\ValueShift\lexi_hack
+.\venv\Scripts\Activate.ps1
+```
+
+### 1. Check that the runs are finished
+
+`outputs\queue_log.txt` should end with `compare: ok` and `done`, with no `FAILED` line for any job. Then open and read:
+
+- `outputs\analysis\alpha_sweep\summary.md`, `relearn\summary.md`, `a2_diag\summary.md` and `dose_grid\summary.md`;
+- `outputs_ru\analysis\ru_attack\summary.md` and `outputs_adaptive\analysis\adaptive\summary.md`;
+- `outputs\analysis\compare.md`, the table across all three roots.
+
+If a job failed, run `python -m exp1_antidote.run_queue` again; it resumes. To give up on the mask-aware attacker, run `python -m exp1_antidote.run_queue --only compare` to still get `compare.md`.
+
+### 2. Push the three output roots to Hugging Face
+
+Use the org token only for this window if your personal token cannot write to ValueShift. Each push takes a while, but already-uploaded files are skipped. `HF_HUB_DISABLE_XET` helps if an upload stalls.
+
+```powershell
+$env:HF_TOKEN = "<ValueShift org token>"      # skip if `hf auth whoami` already lists ValueShift
+# $env:HF_HUB_DISABLE_XET = "1"               # only if an upload stalls
+
+# main root: sweep, relearning, SafeTune diagnostic, doses
+python -m exp1_antidote.run_grid --config exp1_antidote/configs/alpha_sweep.yaml --stage push
+
+# Russian attack
+$env:EXP1_OUT = "$PWD\outputs_ru"
+python -m exp1_antidote.run_grid --config exp1_antidote/configs/ru_attack.yaml --stage push
+
+# mask-aware attacker
+$env:EXP1_OUT = "$PWD\outputs_adaptive"
+python -m exp1_antidote.run_grid --config exp1_antidote/configs/adaptive.yaml --stage push
+
+Remove-Item Env:EXP1_OUT                      # back to the default root
+```
+
+Each push ends with a `[push]` line showing its two repo links.
+
+### 3. Make everything public and build the collections
+
+First the dry run. It should list 6 repos, 3 model and 3 dataset, plus Janhavi's:
+
+```powershell
+python -m exp1_antidote.publish --extra-models <Janhavi's model repos> --extra-datasets <Janhavi's dataset repos>
+```
+
+If it looks right, run it for real. Pass `--title` only if you want a different collection title (keep it under about 60 characters):
+
+```powershell
+python -m exp1_antidote.publish --yes --extra-models <...> --extra-datasets <...>
+```
+
+It prints the two collection links. If Janhavi's repos are under her own account, she switches them to public herself; then add `--no-visibility`, so the script only builds the collections.
+
+Then open both collection links in a private (incognito) browser window. Logged out, every repo should open without a "gated" or "private" notice.
+
+### 4. Write-up and README
+
+- **The write-up.** Publish it as an HF article if you have access (huggingface.co, your profile, New, Article). Otherwise it goes in the GitHub README. `intermediate_results/` is git-ignored, so copy the final text out of it.
+- **Fill every placeholder in `README.md`:** the write-up link, both collection links, Janhavi's repo IDs and her Experiment U section. Remove the **[pending]** markers.
+- **The abstract** must be under 500 words; check the count before pasting it into the form.
+
+### 5. GitHub: commit, push, merge
+
+```powershell
+git status                       # nothing under outputs*, intermediate_results, .env or venv may appear
+git add -A
+git commit -m "Final results, cards, publish script, README for submission"
+git push origin <your-branch>
+```
+
+Then, on github.com:
+
+1. Open a pull request for each branch into `main`: yours and Janhavi's.
+2. Review the diffs and merge them.
+3. Check that `main` shows the final README.
+
+Finally, sync your local copy:
+
+```powershell
+git checkout main
+git pull
+```
+
+Until the queue is finished, merge only on the website. Switching branches or pulling locally changes the code the queue's next job will load.
+
+### 6. Submission form
+
+| Field | What to enter |
+|---|---|
+| Email | the one used for registration |
+| Abstract | the final abstract, under 500 words |
+| HF model collection | link from step 3 |
+| HF dataset collection | link from step 3 |
+| Write-up | HF article link, or the GitHub README link |
+| GitHub repo | `https://github.com/<owner>/<repo>` (the `main` branch) |
+| Repos and models used | `CohereLabs/tiny-aya-global`, `qylu4156/strongreject-15k-v1` (StrongREJECT judge), `facebook/nllb-200-distilled-600M`, SafeTune, git-disl/Antidote, StrongREJECT; datasets BeaverTails, StrongREJECT, XSTest, SST2, MMLU-Pro, plus Janhavi's (MMLU, MMMLU, Wikipedia, ...) |
+| Track(s) | Track 2 (add Janhavi's track if it differs) |
+| Problem statement | Do weight-space safety edits on Tiny Aya (RMU unlearning, Antidote repair) remove what they target, under Lee et al.'s five evaluation checks? |
+
+### Checklist
+
+- [ ] `queue_log.txt` ends with `done`; every summary read; `compare.md` exists
+- [ ] Main root pushed
+- [ ] `outputs_ru` pushed
+- [ ] `outputs_adaptive` pushed
+- [ ] `publish` dry run lists all repos, ours and Janhavi's
+- [ ] `publish --yes` done; both collections open while logged out, with no gated or private repos
+- [ ] Write-up published (HF article or README)
+- [ ] README placeholders filled: links, Experiment U section, no **[pending]** left
+- [ ] Abstract under 500 words
+- [ ] `git status` clean of outputs and secrets; committed and pushed
+- [ ] All PRs merged into `main`; `main` shows the final README
+- [ ] Form submitted with every field, before Sun 23:59
+- [ ] Confirmation email or page saved
