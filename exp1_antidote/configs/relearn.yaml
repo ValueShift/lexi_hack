@@ -1,0 +1,17 @@
+# Relearning re-attack on the sweep's repaired adapters (Lee et al.'s check 1, post-repair attacker).
+# Uses the standard output root. The repair alpha is set by queue.py from the sweep's A3 choice.
+#   python -m exp1_antidote.adaptive --config exp1_antidote/configs/relearn.yaml --mode relearn
+#   python -m exp1_antidote.run_grid --config exp1_antidote/configs/relearn.yaml --stage analyze
+attack:
+  doses: [100]
+  seeds: [0, 1, 2]
+
+repair:
+  arms: [A0, A3, A4a, A6]
+  alphas: [0.1]
+  mask_seeds: [0, 1]
+
+adaptive:
+  mask_aware: false
+  relearn_arms: [A0, A3, A4a, A6]
+  relearn_steps: [10, 25, 50]

@@ -14,6 +14,7 @@ import math
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from .common import (
@@ -78,22 +79,39 @@ def _vllm_generate(cfg: dict, model_path: str, items, runs_with_lora: list[tuple
     for i, (run, lora_path) in enumerate(runs_with_lora):
         if generations_path(run).exists():
             continue
+        t0 = time.time()
         req = LoRARequest(run.run_id, i + 1, str(lora_path)) if lora_path else None
         outs = llm.generate(prompts, params, lora_request=req)
         write_jsonl(generations_path(run), _rows(run, items, [o.outputs[0].text for o in outs]))
-        print(f"[generate] {run.run_id}")
+        _log_timing(cfg, run, time.time() - t0, len(items))
+        print(f"[generate] {run.run_id} ({time.time() - t0:.0f} s)")
 
 
-def _hf_generate_texts(model, tok, items, cfg) -> list[str]:
+def partial_path(final: Path) -> Path:
+    return final.with_name(final.stem + ".partial.jsonl")
+
+
+def _hf_generate_texts(model, tok, items, cfg, partial: Path | None = None) -> list[str]:
+    """Greedy completions in batches. With `partial`, every finished batch is appended there and
+    items already in it are skipped, so an interrupted run resumes at the last finished batch."""
     import torch
 
     tok.padding_side = "left"
     mnt = cfg["eval"]["max_new_tokens"]
     bs = cfg["eval"]["hf_batch_size"]
     outputs = [""] * len(items)
+    done = set()
+    if partial is not None:
+        saved = {(r["set"], r["id"]): r["output"] for r in read_jsonl(partial)}
+        for i, it in enumerate(items):
+            if (it["set"], it["id"]) in saved:
+                outputs[i] = saved[(it["set"], it["id"])]
+                done.add(i)
+        if done:
+            print(f"[generate] resuming from {partial.name}: {len(done)}/{len(items)} items already done")
     device = next(model.parameters()).device
     for s in SETS:
-        idx = [i for i, it in enumerate(items) if it["set"] == s]
+        idx = [i for i, it in enumerate(items) if it["set"] == s and i not in done]
         for j in range(0, len(idx), bs):
             chunk = idx[j : j + bs]
             texts = [chat_prompt(tok, items[i]["user"]) for i in chunk]
@@ -103,7 +121,23 @@ def _hf_generate_texts(model, tok, items, cfg) -> list[str]:
                                      pad_token_id=tok.pad_token_id)
             for i, g in zip(chunk, gen):
                 outputs[i] = tok.decode(g[enc["input_ids"].shape[1]:], skip_special_tokens=True)
+                if partial is not None:
+                    append_jsonl(partial, {"set": s, "id": items[i]["id"], "output": outputs[i]})
     return outputs
+
+
+def write_generations(run: Run, items: list[dict], outputs: list[str]) -> None:
+    """Writes the final generations file (the run's done-marker), then drops its partial file."""
+    final = generations_path(run)
+    write_jsonl(final, _rows(run, items, outputs))
+    partial_path(final).unlink(missing_ok=True)
+
+
+def _log_timing(cfg: dict, run: Run, seconds: float, n_items: int) -> None:
+    append_jsonl(paths()["results"] / "timings.jsonl", {
+        "run_id": run.run_id, "config": cfg["name"], "backend": cfg["eval"]["backend"],
+        "hf_batch_size": cfg["eval"]["hf_batch_size"], "n_items": n_items, "seconds": round(seconds, 1),
+    })
 
 
 def _hf_generate(cfg: dict, items, runs: list[Run]):
@@ -114,22 +148,26 @@ def _hf_generate(cfg: dict, items, runs: list[Run]):
     for run in runs:
         if generations_path(run).exists():
             continue
+        t0 = time.time()
+        partial = partial_path(generations_path(run))
+        resumed = len(read_jsonl(partial))
         kind, loc = artifact(cfg, run)
         if kind == "merged":
             model = load_model(str(loc), cfg["dtype"])
-            out = _hf_generate_texts(model, tok, items, cfg)
+            out = _hf_generate_texts(model, tok, items, cfg, partial)
             del model
             free_gpu()
         else:
             base = base or load_model(cfg["model_id"], cfg["dtype"])
             if kind == "adapter":
                 model = PeftModel.from_pretrained(base, str(loc))
-                out = _hf_generate_texts(model, tok, items, cfg)
+                out = _hf_generate_texts(model, tok, items, cfg, partial)
                 base = model.unload()
             else:
-                out = _hf_generate_texts(base, tok, items, cfg)
-        write_jsonl(generations_path(run), _rows(run, items, out))
-        print(f"[generate] {run.run_id}")
+                out = _hf_generate_texts(base, tok, items, cfg, partial)
+        write_generations(run, items, out)
+        _log_timing(cfg, run, time.time() - t0, len(items) - resumed)
+        print(f"[generate] {run.run_id} ({time.time() - t0:.0f} s)")
 
 
 def generate(cfg: dict, config_path: str, runs: list[Run]) -> None:
@@ -269,10 +307,27 @@ def auditkit_accuracy(rows: list[dict], key: str) -> float | None:
 
 
 def score(cfg: dict, runs: list[Run]) -> None:
+    """Scores runs in chunks of eval.score_chunk_runs. Each chunk loads the judge and the
+    perplexity model once and writes its runs' scores before the next chunk starts, so a crash
+    loses at most one chunk."""
+    results = paths()["results"] / "runs.jsonl"
+    summarized = {r["run_id"] for r in read_jsonl(results)}
+    for run in runs:
+        if scores_path(run).exists() and run.run_id not in summarized:
+            append_jsonl(results, summarize(cfg, run, read_jsonl(scores_path(run))))
+            print(f"[score] {run.run_id}: summary row restored from its scores file")
     todo = [r for r in runs if generations_path(r).exists() and not scores_path(r).exists()]
     if not todo:
         print("[score] nothing to do")
         return
+    n = max(1, int(cfg["eval"].get("score_chunk_runs", 8)))
+    for k in range(0, len(todo), n):
+        chunk = todo[k : k + n]
+        print(f"[score] chunk {k // n + 1}/{math.ceil(len(todo) / n)}: {len(chunk)} runs")
+        _score_chunk(cfg, chunk)
+
+
+def _score_chunk(cfg: dict, todo: list[Run]) -> None:
     gens = {r.run_id: read_jsonl(generations_path(r)) for r in todo}
     sr_rows = [(rid, g) for rid, rows in gens.items() for g in rows if g["set"] == "strongreject"]
     sr = strongreject_scores([g for _, g in sr_rows], cfg["eval"]["judge"])
@@ -303,6 +358,13 @@ def _mean(xs) -> float | None:
     return sum(xs) / len(xs) if xs else None
 
 
+BROKEN_PARSE_RATE = 0.5  # below this share of parseable SST2 answers the model counts as broken
+
+
+def parse_rate(rows: list[dict]) -> float:
+    return _mean(r.get("pred", "none") != "none" for r in rows) or 0.0
+
+
 def summarize(cfg: dict, run: Run, rows: list[dict]) -> dict:
     by = {s: [r for r in rows if r["set"] == s] for s in SETS}
     sr = by["strongreject"]
@@ -311,6 +373,7 @@ def summarize(cfg: dict, run: Run, rows: list[dict]) -> dict:
     mmlu_local = _mean(r["correct"] for r in by["mmlu_pro"])
     sst2_ak = auditkit_accuracy(by["sst2"], "pred")
     mmlu_ak = auditkit_accuracy(by["mmlu_pro"], "pred")
+    sst2_pr = parse_rate(by["sst2"])
     return {
         **run.as_dict(),
         "config": cfg["name"],
@@ -324,6 +387,9 @@ def summarize(cfg: dict, run: Run, rows: list[dict]) -> dict:
         "mmlu_pro_acc": mmlu_ak if mmlu_ak is not None else 100 * mmlu_local,
         "mmlu_pro_acc_local": 100 * mmlu_local,
         "accuracy_via": "auditkit" if sst2_ak is not None else "local",
+        "sst2_parse_rate": sst2_pr,
+        "mmlu_parse_rate": parse_rate(by["mmlu_pro"]),
+        "broken": sst2_pr < BROKEN_PARSE_RATE,
         "n": {s: len(v) for s, v in by.items()},
         "judge": cfg["eval"]["judge"],
         "dtype": cfg["dtype"],

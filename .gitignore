@@ -10,6 +10,8 @@ __pycache__/
 
 # Experiment artifacts (pushed to Hugging Face, not GitHub)
 outputs/
+outputs_*/
+intermediate_results
 ckpt/
 *.safetensors
 *.bin

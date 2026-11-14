@@ -1,16 +1,15 @@
-# Mask-aware attacker vs the adapter-space arms at dose 100. Run with its own output root
-# (EXP1_OUT=<root>_adaptive), add your usual --profile flags:
+# Mask-aware attacker vs the adapter-space arms at dose 100. Needs its own output root
+# (queue.py uses <root>_adaptive); add your usual --profile flags:
 #   python -m exp1_antidote.run_grid --config exp1_antidote/configs/adaptive.yaml --stage all
-# Relearning re-attack (uses the standard output root, after the dose grid's repair stage):
-#   python -m exp1_antidote.adaptive --config exp1_antidote/configs/adaptive.yaml --mode relearn
+# The relearning re-attack lives in relearn.yaml.
 attack:
   doses: [100]
   seeds: [0, 1, 2]
 
 repair:
   arms: [A0, A3, A4a, A5a, A6]
-  alphas: [0.1]            # set to the alpha chosen in the sweep
-  mask_seeds: [0, 1, 2]
+  alphas: [0.1]            # queue.py sets this (and adaptive.alpha) to the sweep's A3 alpha
+  mask_seeds: [0, 1]
 
 adaptive:
   mask_aware: true

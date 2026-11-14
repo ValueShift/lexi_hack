@@ -38,6 +38,7 @@ def paths() -> dict[str, Path]:
         "scores": root / "scores",
         "results": root / "results",
         "analysis": root / "analysis",
+        "checkpoints": root / "checkpoints",
     }
     for v in p.values():
         v.mkdir(parents=True, exist_ok=True)
@@ -104,8 +105,16 @@ def read_jsonl(path: str | Path) -> list[dict]:
     path = Path(path)
     if not path.exists():
         return []
+    rows = []
     with open(path, encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                print(f"[io] skipping a truncated line in {path.name} (left by an interrupted write)")
+    return rows
 
 
 def write_jsonl(path: str | Path, rows: Iterable[dict]) -> None:
@@ -121,8 +130,14 @@ def write_jsonl(path: str | Path, rows: Iterable[dict]) -> None:
 def append_jsonl(path: str | Path, row: dict) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    lead = ""
+    if path.exists() and path.stat().st_size:
+        with open(path, "rb") as f:
+            f.seek(-1, 2)
+            lead = "" if f.read(1) == b"\n" else "\n"
     with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        f.write(lead + json.dumps(row, ensure_ascii=False) + "\n")
+        f.flush()
 
 
 def git_hash() -> str:
