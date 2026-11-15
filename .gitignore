@@ -9,8 +9,6 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Experiment artifacts (pushed to Hugging Face, not GitHub)
-outputs/
-outputs_*/
 intermediate_results
 ckpt/
 *.safetensors

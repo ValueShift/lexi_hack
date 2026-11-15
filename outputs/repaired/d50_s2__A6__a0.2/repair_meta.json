@@ -1,0 +1,16 @@
+{
+  "run_id": "d50_s2__A6__a0.2",
+  "cell": "d50_s2",
+  "arm": "A6",
+  "dose": 50,
+  "seed": 2,
+  "alpha": 0.2,
+  "mask_seed": null,
+  "desc": "norm-matched shrink of the update to A3's residual norm",
+  "info": {
+    "mean_ratio": 0.4573229025289191,
+    "n_modules": 252,
+    "residual_norm_fraction": 0.44398050681210344
+  },
+  "git": "13467b9e8b73ffbe9d8e61ff27ae3ee89503117c"
+}

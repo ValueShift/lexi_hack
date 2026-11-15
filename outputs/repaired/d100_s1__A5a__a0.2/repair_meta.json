@@ -1,0 +1,17 @@
+{
+  "run_id": "d100_s1__A5a__a0.2",
+  "cell": "d100_s1",
+  "arm": "A5a",
+  "dose": 100,
+  "seed": 1,
+  "alpha": 0.2,
+  "mask_seed": null,
+  "desc": "magnitude-only per-row pruning of LoRA factors",
+  "info": {
+    "pruned": 6887808,
+    "total": 30228480,
+    "fraction": 0.22785823170731706,
+    "residual_norm_fraction": 0.3660978928661866
+  },
+  "git": "b966fd59189c99e7125536adeac352c6ec17eb1f"
+}

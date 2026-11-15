@@ -1,0 +1,17 @@
+{
+  "run_id": "d100_s0__A7__a0.1",
+  "cell": "d100_s0",
+  "arm": "A7",
+  "dose": 100,
+  "seed": 0,
+  "alpha": 0.1,
+  "mask_seed": null,
+  "desc": "A3 with benign (SST2) calibration",
+  "info": {
+    "pruned": 3443904,
+    "total": 30228480,
+    "fraction": 0.11392911585365853,
+    "residual_norm_fraction": 0.6460746841556576
+  },
+  "git": "b966fd59189c99e7125536adeac352c6ec17eb1f"
+}

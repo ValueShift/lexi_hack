@@ -1,0 +1,46 @@
+2026-11-12 16:38:17  start: jobs=['sweep', 'relearn', 'a2_diag', 'ru', 'dose', 'adaptive', 'compare'] profiles=['hf_backend', 'gpu16gb'] root=C:\Users\natal\dev\ValueShift\lexi_hack\outputs
+2026-11-12 16:38:17  sweep: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\alpha_sweep.yaml --stage all --no-push --profile hf_backend --profile gpu16gb
+2026-11-12 16:38:17  alpha = 0.1 from no decisions.json (fallback)
+2026-11-12 16:38:17  alpha = 0.1 from no decisions.json (fallback)
+2026-11-12 16:38:17  relearn: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.adaptive --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\relearn.yaml --mode relearn --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-12 16:38:17  relearn_analyze: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\relearn.yaml --stage analyze --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-12 16:38:17  a2_diag: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\a2_diag.yaml --stage all --no-push --profile hf_backend --profile gpu16gb
+2026-11-12 16:38:17  alpha = 0.1 from no decisions.json (fallback)
+2026-11-12 16:38:17  ru: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs_ru exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\ru_attack.yaml --stage all --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-12 16:38:17  alpha = 0.1 from no decisions.json (fallback)
+2026-11-12 16:38:17  dose: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\dose_grid.yaml --stage all --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-12 16:38:17  alpha = 0.1 from no decisions.json (fallback)
+2026-11-12 16:38:17  adaptive: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs_adaptive exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\adaptive.yaml --stage all --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-12 16:38:17  compare: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.compare --roots C:\Users\natal\dev\ValueShift\lexi_hack\outputs C:\Users\natal\dev\ValueShift\lexi_hack\outputs_ru C:\Users\natal\dev\ValueShift\lexi_hack\outputs_adaptive --labels en-attack ru-attack mask-aware --dose 100 --out C:\Users\natal\dev\ValueShift\lexi_hack\outputs\analysis\compare.md
+2026-11-12 16:38:17  done
+2026-11-12 16:38:27  start: jobs=['sweep', 'relearn', 'a2_diag', 'ru', 'dose', 'adaptive', 'compare'] profiles=['hf_backend', 'gpu16gb'] root=C:\Users\natal\dev\ValueShift\lexi_hack\outputs
+2026-11-12 16:38:27  sweep: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\alpha_sweep.yaml --stage all --no-push --profile hf_backend --profile gpu16gb
+2026-11-13 10:43:37  start: jobs=['sweep', 'relearn', 'a2_diag', 'ru', 'dose', 'adaptive', 'compare'] profiles=['hf_backend', 'gpu16gb'] root=C:\Users\natal\dev\ValueShift\lexi_hack\outputs
+2026-11-13 10:43:37  sweep: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\alpha_sweep.yaml --stage all --no-push --profile hf_backend --profile gpu16gb
+2026-11-13 13:50:13  sweep: ok after 3.11 h
+2026-11-13 13:50:13  alpha = 0.2 from A3 recommendation {'alpha': 0.2, 'harmful_score': 5.817580408520168, 'sst2_drop': 1.2000000000000028}
+2026-11-13 13:50:13  relearn: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.adaptive --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\relearn.yaml --mode relearn --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-14 06:40:12  start: jobs=['sweep', 'relearn', 'a2_diag', 'ru', 'dose', 'adaptive', 'compare'] profiles=['hf_backend', 'gpu16gb'] root=C:\Users\natal\dev\ValueShift\lexi_hack\outputs
+2026-11-14 06:40:12  sweep: finished earlier (queue_state.json), skipping; --redo sweep to rerun
+2026-11-14 06:40:12  relearn: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.adaptive --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\relearn.yaml --mode relearn --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-14 07:50:58  relearn: ok after 1.18 h
+2026-11-14 07:50:58  relearn_analyze: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\relearn.yaml --stage analyze --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-14 07:51:04  relearn_analyze: ok after 0.00 h
+2026-11-14 07:51:04  a2_diag: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\a2_diag.yaml --stage all --no-push --profile hf_backend --profile gpu16gb
+2026-11-14 07:58:51  a2_diag: ok after 0.13 h
+2026-11-14 07:58:51  ru: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs_ru exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\ru_attack.yaml --stage all --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-14 11:04:42  ru: ok after 3.10 h
+2026-11-14 11:04:42  dose: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\dose_grid.yaml --stage all --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-14 18:07:26  dose: ok after 7.05 h
+2026-11-14 18:07:26  adaptive: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs_adaptive exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\adaptive.yaml --stage all --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-15 08:03:56  start: jobs=['sweep', 'relearn', 'a2_diag', 'ru', 'dose', 'adaptive', 'compare'] profiles=['hf_backend', 'gpu16gb'] root=C:\Users\natal\dev\ValueShift\lexi_hack\outputs
+2026-11-15 08:03:56  sweep: finished earlier (queue_state.json), skipping; --redo sweep to rerun
+2026-11-15 08:03:56  relearn: finished earlier (queue_state.json), skipping; --redo relearn to rerun
+2026-11-15 08:03:56  a2_diag: finished earlier (queue_state.json), skipping; --redo a2_diag to rerun
+2026-11-15 08:03:56  ru: finished earlier (queue_state.json), skipping; --redo ru to rerun
+2026-11-15 08:03:56  dose: finished earlier (queue_state.json), skipping; --redo dose to rerun
+2026-11-15 08:03:56  adaptive: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs_adaptive exp1_antidote.run_grid --config C:\Users\natal\dev\ValueShift\lexi_hack\exp1_antidote\configs\adaptive.yaml --stage all --no-push --profile hf_backend --profile gpu16gb --profile C:\Users\natal\dev\ValueShift\lexi_hack\outputs\queue_alpha.yaml
+2026-11-15 09:02:07  adaptive: ok after 0.97 h
+2026-11-15 09:02:07  compare: EXP1_OUT=C:\Users\natal\dev\ValueShift\lexi_hack\outputs exp1_antidote.compare --roots C:\Users\natal\dev\ValueShift\lexi_hack\outputs C:\Users\natal\dev\ValueShift\lexi_hack\outputs_ru C:\Users\natal\dev\ValueShift\lexi_hack\outputs_adaptive --labels en-attack ru-attack mask-aware --dose 100 --out C:\Users\natal\dev\ValueShift\lexi_hack\outputs\analysis\compare.md
+2026-11-15 09:02:12  compare: ok after 0.00 h
+2026-11-15 09:02:12  done

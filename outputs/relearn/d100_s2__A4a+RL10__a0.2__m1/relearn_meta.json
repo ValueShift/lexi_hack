@@ -1,0 +1,14 @@
+{
+  "run_id": "d100_s2__A4a+RL10__a0.2__m1",
+  "cell": "d100_s2",
+  "arm": "A4a+RL10",
+  "dose": 100,
+  "seed": 2,
+  "alpha": 0.2,
+  "mask_seed": 1,
+  "from": "d100_s2__A4a__a0.2__m1",
+  "steps": 10,
+  "lr": 0.0001,
+  "n_examples": 64,
+  "git": "b966fd59189c99e7125536adeac352c6ec17eb1f"
+}

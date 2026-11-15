@@ -1,0 +1,21 @@
+{
+  "run_id": "d100_s0__A1",
+  "cell": "d100_s0",
+  "arm": "A1",
+  "dose": 100,
+  "seed": 0,
+  "alpha": null,
+  "mask_seed": null,
+  "desc": "SafeTune AntidoteTrainer, shipped defaults",
+  "info": {
+    "via": "safetune.runner.recover.AntidoteTrainer",
+    "prune_fraction": 0.005,
+    "max_samples": 64,
+    "targets": [
+      "o_proj",
+      "down_proj"
+    ],
+    "calibration": "prompts only"
+  },
+  "git": "unknown"
+}

@@ -1,0 +1,25 @@
+{
+  "run_id": "d100_s0__A2__a0.05",
+  "cell": "d100_s0",
+  "arm": "A2",
+  "dose": 100,
+  "seed": 0,
+  "alpha": 0.05,
+  "mask_seed": null,
+  "desc": "SafeTune apply_antidote, paper-like settings",
+  "info": {
+    "via": "safetune.recover.apply_antidote",
+    "prune_fraction": 0.05,
+    "targets": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ],
+    "calibration": "2000 prompt+answer pairs"
+  },
+  "git": "b966fd59189c99e7125536adeac352c6ec17eb1f"
+}

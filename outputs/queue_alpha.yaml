@@ -1,0 +1,15 @@
+# Written by run_queue.py after the alpha sweep: A3's alpha for every arm.
+adaptive:
+  alpha: 0.2
+repair:
+  alpha_per_arm:
+    A2: 0.2
+    A3: 0.2
+    A4a: 0.2
+    A4m: 0.2
+    A5a: 0.2
+    A5m: 0.2
+    A6: 0.2
+    A7: 0.2
+  alphas:
+  - 0.2

@@ -1,0 +1,4 @@
+[run_grid] config=relearn profiles=['hf_backend', 'gpu16gb', 'C:\\Users\\natal\\dev\\ValueShift\\lexi_hack\\outputs\\queue_alpha.yaml'] model=CohereLabs/tiny-aya-global dtype=bfloat16 backend=hf runs=16 out=C:\Users\natal\dev\ValueShift\lexi_hack\outputs
+
+=== analyze ===
+[analyze] wrote C:\Users\natal\dev\ValueShift\lexi_hack\outputs\analysis\relearn

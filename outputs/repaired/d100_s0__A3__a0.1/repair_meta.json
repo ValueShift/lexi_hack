@@ -1,0 +1,17 @@
+{
+  "run_id": "d100_s0__A3__a0.1",
+  "cell": "d100_s0",
+  "arm": "A3",
+  "dose": 100,
+  "seed": 0,
+  "alpha": 0.1,
+  "mask_seed": null,
+  "desc": "paper-faithful port: Wanda on LoRA factors, harmful calib",
+  "info": {
+    "pruned": 3443904,
+    "total": 30228480,
+    "fraction": 0.11392911585365853,
+    "residual_norm_fraction": 0.637201186261934
+  },
+  "git": "unknown"
+}

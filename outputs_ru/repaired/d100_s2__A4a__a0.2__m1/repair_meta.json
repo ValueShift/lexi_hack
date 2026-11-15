@@ -1,0 +1,17 @@
+{
+  "run_id": "d100_s2__A4a__a0.2__m1",
+  "cell": "d100_s2",
+  "arm": "A4a",
+  "dose": 100,
+  "seed": 2,
+  "alpha": 0.2,
+  "mask_seed": 1,
+  "desc": "random per-row pruning of LoRA factors (matches A3)",
+  "info": {
+    "pruned": 6887808,
+    "total": 30228480,
+    "fraction": 0.22785823170731706,
+    "residual_norm_fraction": 0.7297202322393668
+  },
+  "git": "b966fd59189c99e7125536adeac352c6ec17eb1f"
+}

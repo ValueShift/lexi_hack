@@ -1,0 +1,58 @@
+{
+  "dose": 10,
+  "seed": 0,
+  "model_id": "CohereLabs/tiny-aya-global",
+  "attack": {
+    "doses": [
+      10,
+      50,
+      100
+    ],
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ],
+    "lr": 0.0001,
+    "epochs": 3,
+    "batch_size": 4,
+    "grad_accum": 2,
+    "max_len": 512,
+    "weight_decay": 0.0,
+    "gradient_checkpointing": true,
+    "checkpoint_every": 50
+  },
+  "n_harmful": 10,
+  "n_benign": 1000,
+  "harmful_ids": [
+    "bt2542",
+    "bt2153",
+    "bt4167",
+    "bt5026",
+    "bt2661",
+    "bt4287",
+    "bt4043",
+    "bt3047",
+    "bt2518",
+    "bt5415"
+  ],
+  "train_log": {
+    "steps": 378,
+    "final_loss": 0.0011791990385972896,
+    "n_examples": 1010,
+    "seconds": 748.7
+  },
+  "git": "b966fd59189c99e7125536adeac352c6ec17eb1f"
+}
