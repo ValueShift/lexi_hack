@@ -475,7 +475,7 @@ report it in this write-up and with the configuration needed to reproduce it ([`
 
 ## 11. Artifacts
 
-- **Hugging Face collections:** models: **[link]** · datasets, logs and results: **[link]**.
+- **Hugging Face collections:** [models](https://huggingface.co/collections/ValueShift/safety-edits-that-dont-stick-models-6af9ebd1df3c0e2d270418d9) (3 adapter repos) · [datasets, logs and results](https://huggingface.co/collections/ValueShift/safety-edits-that-dont-stick-datasets-6af9ebd222d0e7af1a483f70) (4 datasets). All repos are public.
   - *Repair:* `ValueShift/exp1-antidote-adapters`, `-ru-adapters`, `-adaptive-adapters`, and the matching `-logs` datasets.
   - *Unlearning:* `ValueShift/eoh-results` (per-question outputs, unlearned weight deltas, logs). Its per-question results are also in [`exp2_erased_or_hidden/results/`](exp2_erased_or_hidden/results/).
 - **GitHub:** this repository, with code, results, analysis and figures.
@@ -555,7 +555,7 @@ single-language evaluation misses attacks that switch language, and an English-o
 
 ## 17. Changelog
 
-- **2026-11-15:** first submission.
+- **2026-11-15:** first submission; Hugging Face collection links added.
 
 ## Appendix
 
