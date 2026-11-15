@@ -108,6 +108,49 @@ def boot_pooled(cell_list, other_list=None):
             "p_le_0": float(np.mean(d <= 0))}
 
 
+def depth_robust(res, cells, evals, metas):
+    arms = [a for a in ("A2", "A2s", "A1c", "A1") if a in evals and a in metas]
+    atts = [a for a in ATTACK_NAME if all(any(e[2] == 1 for e in cells.get((arm, a, l), [])) for arm in arms for l in LANGS)]
+    if len(arms) < 3 or not atts or "A0" not in evals:
+        return None
+    layer = {a: metas[a]["layer"] for a in arms}
+    late = max(layer.values())
+
+    def one(fe):
+        return [e for e in fe if e[2] == 1][0]
+
+    def build(fi=None, ci=None):
+        X, Y, G = [], [], []
+        for arm in arms:
+            for lang in LANGS:
+                f0 = np.array(evals["A0"][f"{lang}/forget_B"]["correct"], float)
+                fa = np.array(evals[arm][f"{lang}/forget_B"]["correct"], float)
+                idx = np.arange(len(f0)) if fi is None else fi
+                vals = []
+                for at in atts:
+                    gf, gc, _ = one(cells[(arm, at, lang)])
+                    cidx = np.arange(len(gc)) if ci is None else ci
+                    vals.append(gf[idx].mean() - gc[cidx].mean())
+                X.append(f0[idx].mean() - fa[idx].mean()); Y.append(float(np.mean(vals))); G.append(arm)
+        return np.array(X), np.array(Y), G
+
+    def fit(X, Y, G):
+        D = np.column_stack([X] + [[1.0 if g == a else 0.0 for g in G] for a in arms])
+        within = np.linalg.lstsq(D, Y, rcond=None)[0][0]
+        D2 = np.column_stack([np.ones_like(X), X, [1.0 if layer[g] == late else 0.0 for g in G]])
+        lay = np.linalg.lstsq(D2, Y, rcond=None)[0][2]
+        return np.polyfit(X, Y, 1)[0], within, lay
+
+    pt = fit(*build())
+    nF = len(evals["A0"]["en/forget_B"]["correct"])
+    nC = len(one(cells[(arms[0], atts[0], "en")])[1])
+    bs = np.array([fit(*build(rng.integers(0, nF, nF), rng.integers(0, nC, nC))) for _ in range(B)])
+    ci = lambda k: [float(np.percentile(bs[:, k], 2.5)), float(np.percentile(bs[:, k], 97.5))]
+    return {"attacks": atts, "pooled_slope": float(pt[0]), "pooled_slope_ci": ci(0),
+            "within_arm_slope": float(pt[1]), "within_arm_slope_ci": ci(1),
+            "late_layer_effect": float(pt[2]), "late_layer_effect_ci": ci(2)}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
@@ -204,6 +247,10 @@ def main():
                           "mean_residual_by_layer": {str(L): float(np.mean([resid[i] for i, p in enumerate(pts) if p["layer"] == L]))
                                                      for L in sorted({p["layer"] for p in pts})},
                           "points": pts}
+    # the 12 points above are 4 arms x 3 languages, so they are not independent. Two stricter checks, with CIs
+    # from resampling questions: the slope WITHIN each arm (arm fixed effects: each arm compared only with itself
+    # across languages, where its erasure depth differs), and the layer-30 effect at equal depth.
+    S["depth_robust"] = depth_robust(res, cells, evals, metas)
     (out / "summary.json").write_text(json.dumps(S, indent=1), encoding="utf-8")
 
     # ---------------- markdown tables ----------------
@@ -245,6 +292,12 @@ def main():
     for k, v in S["pairwise"].items():
         comp, tag, lang = k.split("|")
         md.append(f"| {comp} | {tag} | {lang} | {v['mean']:+.3f} | [{v['lo']:+.3f}, {v['hi']:+.3f}] | {v['p_le_0']:.3f} |")
+    if S.get("depth_robust"):
+        d = S["depth_robust"]
+        md += ["", "## Recovery vs erasure depth (CIs from resampling questions)", "",
+               f"- Pooled slope over 4 arms x 3 languages: {d['pooled_slope']:+.2f} [{d['pooled_slope_ci'][0]:+.2f}, {d['pooled_slope_ci'][1]:+.2f}]",
+               f"- Within-arm slope (each arm vs itself across languages): {d['within_arm_slope']:+.2f} [{d['within_arm_slope_ci'][0]:+.2f}, {d['within_arm_slope_ci'][1]:+.2f}]",
+               f"- Layer-30 effect at equal depth: {d['late_layer_effect']:+.2f} [{d['late_layer_effect_ci'][0]:+.2f}, {d['late_layer_effect_ci'][1]:+.2f}]"]
     if "samples" in S:
         md += ["", "## Generated answers: correct letter first (8 held-out questions per language)", "", "| Condition | English | Marathi |", "|---|---|---|"]
         for c, (k, n) in S["samples"]["en"].items():
@@ -334,17 +387,20 @@ def main():
         F = S["depth_fit"]
         fig, ax = plt.subplots(figsize=(5.6, 3.4), dpi=200)
         xs = np.linspace(0, 0.9, 10)
-        placed = []
         ax.plot(xs, F["slope"] * xs + F["intercept"], color=INK2, lw=1, ls="--", zorder=1)
         for L in (27, 30):
             P = [p for p in F["points"] if p["layer"] == L]
             ax.scatter([p["erased"] for p in P], [p["mean_RE"] for p in P], s=44, color=LAYER_COLOR[L], edgecolor="white",
                        linewidth=1.5, zorder=3, label=f"layer {L}")
-            for p in P:
-                near = sum(1 for q in placed if abs(q[0] - p["erased"]) < 0.03 and abs(q[1] - p["mean_RE"]) < 0.02)
-                placed.append((p["erased"], p["mean_RE"]))
-                ax.annotate(f"{p['arm']} {p['lang']}", (p["erased"], p["mean_RE"]), xytext=(5, -3 - 9 * near),
-                            textcoords="offset points", fontsize=7, color=INK2)
+        # one label per position (points that coincide share a label); hand-placed offsets keep labels apart
+        OFF = {"A1 en": (-34, 3), "A2s en": (6, -2), "A1c en": (6, -10), "A1 hi": (-34, 3), "A2s hi": (6, -3),
+               "A1c hi": (6, 2), "A2 hi": (6, -4), "A2 en": (6, -3), "A2 mr": (6, -3), "A2s mr": (6, -3), "A1 mr": (6, 3), "A1c mr": (6, -10)}
+        groups = {}
+        for p in F["points"]:
+            groups.setdefault((round(p["erased"], 2), round(p["mean_RE"], 2)), []).append(f"{p['arm']} {p['lang']}")
+        for (x, y), names in groups.items():
+            ax.annotate(", ".join(names), (x, y), xytext=OFF.get(names[0], (6, -3)) if len(names) == 1 else (6, -3),
+                        textcoords="offset points", fontsize=7, color=INK2)
         ax.text(0.02, 0.62, f"fit: relearned = {F['slope']:.2f} × erased {F['intercept']:+.2f}\nr = {F['r']:.2f}", fontsize=8, color=INK)
         ax.set_xlim(0, 0.9); ax.set_ylim(0, 0.7)
         ax.set_xlabel("accuracy erased by unlearning (held-out forget questions)")

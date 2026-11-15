@@ -192,6 +192,7 @@ def pooled_rows():
 
 
 F = S.get("depth_fit", {})
+DR = S.get("depth_robust") or {'within_arm_slope': 0, 'within_arm_slope_ci': [0, 0], 'late_layer_effect': 0, 'late_layer_effect_ci': [0, 0]}
 q2, q2s, q1c = pooled("A2", "both_folds"), pooled("A2s", "both_folds"), pooled("A1c", "both_folds")
 m_en = pair("A1c-A2s|both_folds|en")
 m_all = pair("A1c-A2s|both_folds|all")
@@ -267,7 +268,10 @@ chemistry back.</p>
 the shared layer is more durable. But A1c had erased much more English, and the difference sat entirely in English. Erasing as deeply at
 layer 27 (A2s) removes it: at matched English depth the English difference is {m_en['mean']:+.2f}, and overall layer 27 recovers slightly
 <i>more</i> ({m_all['mean']:+.2f}), driven by Hindi, where A2s had erased more ({a2s.get('hi/forget_B', 0):.2f} vs {acc['A1c']['hi/forget_B']:.2f}). The scatter shows the
-same thing across all twelve arm × language points: how much comes back is roughly {F.get('slope', 0):.2f} of how much was erased, whichever layer was edited.</p>
+same thing across all twelve arm × language points: how much comes back is roughly {F.get('slope', 0):.2f} of how much was erased, whichever layer was edited.
+Those twelve points are not independent (4 arms × 3 languages), so two stricter checks, with intervals from resampling questions: comparing
+each arm only with itself across languages, the slope is {DR['within_arm_slope']:+.2f} ({DR['within_arm_slope_ci'][0]:+.2f} to {DR['within_arm_slope_ci'][1]:+.2f});
+at equal depth, layer 30 adds {DR['late_layer_effect']:+.2f} ({DR['late_layer_effect_ci'][0]:+.2f} to {DR['late_layer_effect_ci'][1]:+.2f}).</p>
 
 <h2>5. What the model actually says</h2>
 <p>Unlearned models do not give wrong answers; they produce degenerate text. After a Marathi fine-tune they answer fluently again, on questions

@@ -80,6 +80,12 @@ Forget columns: held-out half B. Original model: 1.00 / 1.00 / 0.57 by construct
 | A1c-A2s | both_folds | hi | -0.229 | [-0.365, -0.104] | 1.000 |
 | A1c-A2s | both_folds | mr | -0.043 | [-0.122, +0.034] | 0.866 |
 
+## Recovery vs erasure depth (CIs from resampling questions)
+
+- Pooled slope over 4 arms x 3 languages: +0.57 [+0.32, +0.92]
+- Within-arm slope (each arm vs itself across languages): +0.46 [+0.22, +0.79]
+- Layer-30 effect at equal depth: +0.05 [-0.01, +0.11]
+
 ## Generated answers: correct letter first (8 held-out questions per language)
 
 | Condition | English | Marathi |

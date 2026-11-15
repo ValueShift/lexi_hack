@@ -1,6 +1,6 @@
-# Experiment R: Antidote vs matched nulls on Tiny Aya
+# Repair experiment: Antidote vs matched nulls on Tiny Aya
 
-This folder is the code for Experiment R of the combined submission: does Antidote's post-fine-tuning repair come from its mechanism (harmful-data calibration), and does it last? It attacks `CohereLabs/tiny-aya-global` with a harmful LoRA fine-tune, repairs the adapter with Antidote and with matched-strength nulls, then evaluates every result on harm, over-refusal and utility. The results and their discussion are in the [top-level README](../README.md).
+This folder is the code for the repair experiment of the combined submission: does Antidote's post-fine-tuning repair come from its mechanism (harmful-data calibration), and does it last? It attacks `CohereLabs/tiny-aya-global` with a harmful LoRA fine-tune, repairs the adapter with Antidote and with matched-strength nulls, then evaluates every result on harm, over-refusal and utility. The results and their discussion are in the [top-level README](../README.md).
 
 > **Content warning.** The attack adapters are deliberately harmful, and the generations contain harmful answers. Keep Hub repos private (`hub.private: true`) until you mean to publish.
 
@@ -68,6 +68,7 @@ A third axis (`translate.py`, `ru_attack.yaml`) repeats the dose-100 attack with
 | `adaptive.py` | Mask-aware attacker and relearning re-attack |
 | `translate.py` | NLLB-200 translation of the harmful attack slice, plus a spot-check file for a human reader |
 | `compare.py` | One table across output roots (English attack, Russian attack, mask-aware attacker) |
+| `auditkit_crosscheck.py` | Rescores saved SST2 and MMLU-Pro predictions through AuditKIT (CPU) and checks them against the local count |
 | `hub.py` | Push stage: model repo for adapters, dataset repo for logs, cards with the content warning |
 | `publish.py` | Submission step: makes the repos public and builds the HF model and dataset collections |
 
@@ -216,6 +217,8 @@ With the transformers backend, generation is most of the GPU time (about 6 of th
 
 ## Reading the outputs
 
+The outputs of the runs in the write-up are committed under [`outputs/`](../outputs/), [`outputs_ru/`](../outputs_ru/) and [`outputs_adaptive/`](../outputs_adaptive/) (no weights), and on the Hugging Face logs datasets. `analysis/auditkit_crosscheck.csv` in each rescores SST2 and MMLU-Pro with AuditKIT (identical to the pipeline's accuracy in all 187 runs).
+
 Everything lives under `$EXP1_OUT` (default `outputs/`). The Russian and mask-aware jobs use their own roots, `outputs_ru/` and `outputs_adaptive/`.
 
 ```
@@ -261,7 +264,7 @@ The metric columns:
 - **CSVs:** `runs.csv` has one row per run, `aggregate.csv` the table above, `relative_repair.csv`, `contrasts.csv` and `relearn.csv`. Plots: `harmful_vs_dose.png`, `harm_vs_utility.png`.
 - **Per-prompt detail.** To see why a run scored as it did, read its `scores/<run_id>.jsonl`: every prompt with the model's answer and its judge score.
 
-Accuracies are local exact match of the parsed label or letter. `evaluate.py` first tries AuditKIT, but the installed AuditKIT's `evaluate` signature differs, so the logs show `AuditKIT evaluate failed ... using local accuracy`. This warning is expected and does not change any number.
+Accuracies are computed through AuditKIT (`auditkit.evaluate` on the parsed predictions, `model="precomputed"`), cross-checked against the local exact-match count. Runs scored before this fix record `accuracy_via: local`, because the earlier call used an argument this AuditKIT version does not accept. Rescore them through AuditKIT from the saved files, on CPU, with `python -m exp1_antidote.auditkit_crosscheck outputs outputs_ru outputs_adaptive`. It writes `analysis/auditkit_crosscheck.csv` per root and exits non-zero if any run differs from the local count or has no AuditKIT value.
 
 ## Crash safety and resuming
 

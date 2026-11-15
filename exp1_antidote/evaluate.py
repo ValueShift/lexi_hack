@@ -289,15 +289,22 @@ def response_ppl(cfg: dict, rows: list[dict]) -> list[float]:
 
 
 def auditkit_accuracy(rows: list[dict], key: str) -> float | None:
-    """Exact-match accuracy through AuditKIT on parsed predictions (cross-checked locally)."""
+    """Exact-match accuracy (%) through AuditKIT on parsed predictions (cross-checked against the local count).
+
+    AuditKIT scores precomputed outputs directly: each prediction goes into ``Sample.actual_output`` and
+    ``model="precomputed"``; with golden targets it selects its ExactMatch scorer itself. (Earlier versions of this
+    function passed ``metrics=[...]``, which this AuditKIT API does not accept, so every call fell back to local.)
+    """
     try:
         import auditkit as ak
     except ImportError:
         return None
-    preds = {r["id"]: r[key] for r in rows}
-    samples = [ak.Sample(input=r["id"], target=r["target"]) for r in rows]
+    if not rows:
+        return None
+    samples = [ak.Sample(input=str(r["id"]), id=str(r["id"]), target=str(r["target"]), actual_output=str(r[key]))
+               for r in rows]
     try:
-        res = ak.evaluate(samples, model=lambda prompts: [preds[p] for p in prompts], metrics=["exact_match"])
+        res = ak.evaluate(samples, model="precomputed", cache=False)
         head = res.headline
         val = float(head.get("exact_match", next(iter(head.values()))) if isinstance(head, dict) else head)
         return val if val > 1.0 else 100.0 * val

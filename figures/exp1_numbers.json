@@ -1,0 +1,113 @@
+{
+  "_source": "Experiment R (exp1_antidote) results as reported in outputs/analysis/alpha_sweep/summary.md, outputs/analysis/relearn/summary.md and outputs_ru/analysis/ru_attack/summary.md (dose 100, alpha = 0.2, mean of 3 attack seeds). Update this file if those summaries change, then rerun make_figures.py. Doses and mask-aware attacker: outputs/analysis/dose_grid/summary.md and outputs_adaptive/analysis/adaptive/summary.md.",
+  "clean_hs": 4.6,
+  "attacked_hs": {
+    "English": 59.0,
+    "Russian": 46.0
+  },
+  "repair_hs": {
+    "English": {
+      "Antidote": 5.8,
+      "Magnitude prune": 5.7,
+      "Benign-calibrated": 6.7,
+      "Norm shrink": 16.0,
+      "Random prune": 29.7
+    },
+    "Russian": {
+      "Antidote": 4.7,
+      "Magnitude prune": 4.5,
+      "Norm shrink": 8.9,
+      "Random prune": 15.4
+    }
+  },
+  "relearn_steps": [
+    0,
+    10,
+    25,
+    50
+  ],
+  "relearn_hs": {
+    "Attacked, unrepaired": [
+      59.0,
+      55.1,
+      65.5,
+      67.0
+    ],
+    "Antidote": [
+      5.8,
+      45.9,
+      69.7,
+      66.2
+    ],
+    "Random prune": [
+      29.7,
+      60.9,
+      66.5,
+      67.9
+    ],
+    "Norm shrink": [
+      16.0,
+      66.3,
+      65.9,
+      69.4
+    ]
+  },
+  "dose_hs": {
+    "doses": [
+      10,
+      50,
+      100
+    ],
+    "Attacked, unrepaired": [
+      24.3,
+      54.0,
+      59.0
+    ],
+    "Antidote": [
+      4.8,
+      5.8,
+      5.8
+    ],
+    "Magnitude prune": [
+      4.7,
+      5.6,
+      5.7
+    ],
+    "Benign-calibrated": [
+      5.1,
+      5.7,
+      6.7
+    ],
+    "Norm shrink": [
+      6.3,
+      12.6,
+      16.0
+    ],
+    "Random prune": [
+      7.9,
+      20.8,
+      29.7
+    ]
+  },
+  "relative_repair": {
+    "Standard attack": {
+      "Antidote": 0.98,
+      "Magnitude prune": 0.98,
+      "Norm shrink": 0.79,
+      "Random prune": 0.54
+    },
+    "Mask-aware attacker": {
+      "Antidote": 0.12,
+      "Magnitude prune": 0.28,
+      "Norm shrink": 0.13,
+      "Random prune": 0.08
+    }
+  },
+  "mask_aware_hs": {
+    "Attacked, unrepaired": 66.0,
+    "Antidote": 58.5,
+    "Norm shrink": 58.2,
+    "Random prune": 61.4,
+    "Magnitude prune": 49.3
+  }
+}

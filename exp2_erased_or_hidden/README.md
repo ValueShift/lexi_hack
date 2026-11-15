@@ -1,7 +1,10 @@
-# Experiment 2 — Erased or Hidden? Unlearning on Tiny Aya across languages
+# Unlearning experiment: Erased or Hidden? RMU on Tiny Aya across languages
 
 **Question.** When RMU unlearning makes `CohereLabs/tiny-aya-global` fail high-school chemistry, is the knowledge gone or only
 hidden? Does fine-tuning in *another* language bring it back, and does that depend on which layer the unlearning edited?
+
+Part of the combined write-up in the [top-level README](../README.md). This folder has the code, the per-question results, the
+analysis and a standalone report.
 
 **Report:** [`report/erased_or_hidden_report.pdf`](report/erased_or_hidden_report.pdf) · **All numbers:** [`analysis/tables.md`](analysis/tables.md)
 
@@ -10,11 +13,11 @@ hidden? Does fine-tuning in *another* language bring it back, and does that depe
 | | Result | Strength |
 |---|---|---|
 | 1 | **Hidden, not erased.** After English-only RMU unlearning, a small LoRA fine-tune restores held-out forget answers in every arm. Pooled over both test halves: layer 27 +0.27 (95% CI +0.12 to +0.42), layer 27 deeper +0.43 (95% CI +0.27 to +0.59), layer 30 +0.33 (95% CI +0.19 to +0.47). | Solid |
-| 2 | **Any language, any topic.** Hindi or Marathi fine-tuning restores *English* answers as much as English fine-tuning (layer 27 deeper: +0.53 / +0.52 / +0.56). A fine-tune on **unrelated** Marathi general-knowledge questions (no chemistry) restores the most: +0.69, +0.62, and +0.30 even for the shallow layer-27 arm (CI +0.11 to +0.50). | Solid |
-| 3 | **Depth, not layer.** Across 4 arms × 3 languages, relearning excess ≈ 0.57 × accuracy erased +0.09 (r = 0.86); layers 27 and 30 sit -0.02 / +0.02 off the line. At matched English depth (A2s vs A1c) the English difference is -0.03 (95% CI -0.08 to +0.03). | Solid |
+| 2 | **Any language, any topic.** Hindi or Marathi fine-tuning restores *English* answers as much as English fine-tuning (layer 27 deeper: +0.53 / +0.52 / +0.56). A fine-tune on **unrelated** Marathi general-knowledge questions (no chemistry; 200 questions, the largest attack) restores +0.69, +0.62, and +0.30 even for the shallow layer-27 arm (CI +0.11 to +0.50). | Solid |
+| 3 | **Depth, not layer.** Across 4 arms × 3 languages, relearning excess ≈ 0.57 × accuracy erased +0.09 (r = 0.86); layers 27 and 30 sit -0.02 / +0.02 off the line. The 12 points are not independent, so two stricter checks: within each arm (each arm vs itself across languages) the slope is +0.46 (95% CI +0.22 to +0.79), and at equal depth the layer-30 effect is +0.05 (−0.01 to +0.11). At matched English depth (A2s vs A1c) the English difference is -0.03 (95% CI -0.08 to +0.03). | Solid |
 | 4 | **Original hypothesis not supported.** Unlearning at the (supposedly) more shared layer is not more durable; its apparent advantage in the first runs came from erasing less. Compare durability at matched erasure depth, per language. | Solid |
 | 5 | At matched depth both layers cause similar collateral damage (biology/physics 0.40 → 0.21 vs 0.17). | Moderate |
-| 6 | Unlearned models produce degenerate text on chemistry; after Marathi fine-tuning they answer fluently again on questions never trained on. | Illustrative (8 questions) |
+| 6 | Unlearned models mostly produce degenerate text on chemistry; after Marathi fine-tuning the correct option comes back in 2–3 of 8 held-out English answers (0–1 before), often with an explanation that starts fluently and then repeats. | Illustrative (8 questions) |
 | 7 | A linear probe reads the answer at layers 23–24 (≈0.6 vs 0.25 chance) identically in every arm; it falls to chance only after the edited layers. | Weak |
 
 **Correction to the design.** Layer 27 was chosen as the most cross-lingually similar layer by linear CKA, but the CKA curve is
@@ -32,14 +35,14 @@ Marathi (NLLB-200 translation). Unlearning: RMU on English text only, training t
 3e-4, 2 seeds, strongest lr kept per seed. **Relearning excess** = gain on held-out forget questions − gain on held-out control
 questions under the same kind of attack. Scoring: multiple-choice letter scores (no generation, no judge), plus free-text samples.
 
-| Arm | What it is |
-|---|---|
-| A0 | Original model |
-| A2 | RMU at layer 27 (matched) |
-| A1 | RMU at layer 30, strong (erases, 20 points collateral) |
-| A1c | RMU at layer 30, medium (erases, 9 points collateral) — closest layer-30 match |
-| A1b, A1d | RMU at layer 30, gentle (half-erase, no collateral) |
-| A2s | RMU at layer 27 trained longer, erasing English as deeply as A1c (0.17) with 5 points collateral |
+| Arm | Name in the write-up | What it is |
+|---|---|---|
+| A0 | Original | Original model |
+| A2 | RMU-L27 | RMU at layer 27 (matched) |
+| A1 | RMU-L30-strong | RMU at layer 30, strong (erases, 20 points collateral) |
+| A1c | RMU-L30 | RMU at layer 30, medium (erases, 9 points collateral) — closest layer-30 match |
+| A1b, A1d | – | RMU at layer 30, gentle (half-erase, no collateral) |
+| A2s | RMU-L27-deep | RMU at layer 27 trained longer, erasing English as deeply as A1c (0.17) with 5 points collateral |
 
 ## Files
 

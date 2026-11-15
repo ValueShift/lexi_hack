@@ -2652,5 +2652,29 @@
     "n_attacks": 5
    }
   ]
+ },
+ "depth_robust": {
+  "attacks": [
+   "targeted@en",
+   "targeted@hi",
+   "targeted@mr",
+   "benign_ring1@mr",
+   "benign_general@mr"
+  ],
+  "pooled_slope": 0.5698164245043782,
+  "pooled_slope_ci": [
+   0.32145223765520353,
+   0.9153799240072482
+  ],
+  "within_arm_slope": 0.4569504791381463,
+  "within_arm_slope_ci": [
+   0.22075490225616518,
+   0.791696325389454
+  ],
+  "late_layer_effect": 0.048937697322665924,
+  "late_layer_effect_ci": [
+   -0.01228686252392681,
+   0.11205335070681403
+  ]
  }
 }
