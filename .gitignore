@@ -1,5 +1,5 @@
 # OpenMemory - IDE/Assistant specific rules
-.cursor\rules\openmemory.mdc
+.cursor/rules/openmemory.mdc
 
 # Python
 .venv/
@@ -10,6 +10,7 @@ __pycache__/
 
 # Experiment artifacts (pushed to Hugging Face, not GitHub)
 intermediate_results
+outputs*/data/
 ckpt/
 *.safetensors
 *.bin

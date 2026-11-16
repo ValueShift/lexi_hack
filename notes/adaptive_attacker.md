@@ -1,4 +1,4 @@
-# Adaptive attackers against Antidote (Nov 10–11)
+# Adaptive attackers against Antidote (Nov 10–11, 2026, UTC+3)
 
 Lee et al.'s first check is "tell the attacker": a defence is only evaluated against an attacker who knows it exists. Antidote's paper evaluates only a fixed fine-tuning attack. We add two attackers, both in `exp1_antidote/adaptive.py`.
 

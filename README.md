@@ -2,7 +2,7 @@
 
 **Unlearning and repair on Tiny Aya, stress-tested with matched controls, cross-lingual re-attacks and an attacker who knows the defence**
 
-**One-line claim.** Two published weight-space safety edits, RMU unlearning and Antidote repair, both pass their own tests on Tiny Aya Global, yet a few minutes of fine-tuning undoes each of them (in any language, even on unrelated data), and the ingredient each method relies on adds little over a simple baseline that removes as much.
+**One-line claim.** Two published weight-space safety edits, RMU unlearning and Antidote repair, both pass their own tests on Tiny Aya Global, yet a short fine-tune undoes each of them (for unlearning, in any language and even on unrelated data), and the design choice each relies on adds little over a simple baseline that removes as much.
 
 **Authors:** Janhavi Khindkar and Nataliia Povarova (ValueShift Research)
 
@@ -11,8 +11,8 @@ Lexsi AI Safety & Alignment Hackathon · Track 2: AI Red Teaming, Safety and Ali
 **Also as:** [PDF](writeup/safety_edits_that_dont_stick.pdf) · [HTML](writeup/safety_edits_that_dont_stick.html)
 
 > **Content warning.** The repair experiment's attack adapters are deliberately harmful. Its logs, and the `outputs*/` folders of
-> this repository, contain harmful prompts, the models' harmful answers, and the BeaverTails-derived training and calibration data
-> (with its Russian translation). This write-up quotes no harmful completions.
+> this repository, contain harmful prompts and the models' harmful answers. The BeaverTails-derived training and calibration data
+> (and its Russian translation) is not redistributed; the code rebuilds it from the public dataset. This write-up quotes no harmful completions.
 
 ## Abstract
 
@@ -60,7 +60,7 @@ languages and with unrelated data, and attackers who know the defence.
 |---|---|---|
 | **Does it work on its own metric?** | **Yes.** Held-out chemistry erased in English, Hindi *and* Marathi (English 1.00 → 0.20–0.50, by strength). | **Yes.** Harmful score 59.0 → 5.8 (clean 4.6); SST2 −1.2. |
 | **Is it the design choice that was supposed to matter?** | **No.** Our choice of layer: at matched erasure depth it adds +0.05 [−0.01, +0.11]. | **Mostly no.** Harmful calibration: magnitude pruning with no data gives 95–100% of the repair. Calibration adds 1–2 points at light pruning (α = 0.05: 16.3 vs 18.3) and nothing at α = 0.2 (all doses, Russian). |
-| **Does it survive fine-tuning?** | **No.** Roughly half of what was erased returns after a small LoRA fine-tune. | **No.** 10 harmful steps: 5.8 → 45.9; 25 steps: 69.7, the same as the unrepaired adapter under the same re-attack (65.5). |
+| **Does it survive fine-tuning?** | **No.** Roughly half of what was erased returns after a small LoRA fine-tune. | **No.** 10 harmful steps: 5.8 → 45.9; 25 steps: 69.7, at or above the unrepaired adapter under the same re-attack (65.5). |
 | **Does it survive an attacker who knows it?** | Not applicable (the relearning attacks above already target the edit). | **No.** The mask-aware attacker cuts relative repair from 0.98 to 0.12. |
 | **Does language protect it?** | **No.** Hindi or Marathi fine-tuning restores *English* answers; so does an **unrelated** Marathi fine-tune. | **No.** A Russian-language attack harms English prompts; an English-calibrated repair still fixes it. |
 | **Hidden, or relearned from scratch?** | **Hidden:** a set of never-known control questions separates the two. | **Not established:** no never-edited baseline was re-attacked. |
@@ -425,7 +425,7 @@ quote harmful completions here.
 
 | Experiment | Compute | Hardware |
 |---|---|---|
-| Repair (all configs, 3 seeds, doses, relearning, Russian, mask-aware) | about 31 GPU-hours, measured | one RTX 5070 Ti (16 GB), local |
+| Repair (all configs, 3 seeds, doses, relearning, Russian, mask-aware) | about 33 GPU-hours, measured | one RTX 5070 Ti (16 GB), local |
 | Unlearning (all arms, attacks, both halves, probe, samples) | roughly 3–4 GPU-hours (estimated from the run scripts, not logged), plus earlier runs on a free Colab T4 | one A100 (40 GB), Lambda Cloud |
 
 - **Cost per 1,000 replies:** about 5.5 GPU-minutes on the RTX 5070 Ti (transformers backend, up to 256 new tokens; measured from the generation timings: 1,100 completions in about 6 minutes).
@@ -447,8 +447,9 @@ quote harmful completions here.
   - the StrongREJECT judge, not the paper's beaver-dam-7b;
   - 150 English evaluation prompts;
   - MMLU-Pro is flat at about 25 for every model, including clean, so it is uninformative;
-  - the Russian attack keeps its benign half in English and was run at one α;
+  - the Russian attack keeps its benign half in English and was run at one α; against that attack's own unrepaired model, Antidote and magnitude pruning cost 2.2 SST2 points, just over the 2-point budget (SST2 stays above the clean model's);
   - relearning used English harmful data only and has no never-edited baseline;
+  - the relearning re-attack and the mask-aware attacker were run at dose 100 and α = 0.2 only;
   - no attacker targeting magnitude pruning was tested;
   - no quantized-model results;
   - the SafeTune `apply_antidote` diagnostic is one seed at one α;
@@ -503,7 +504,7 @@ papers/                 reading list
 HF Jobs is in [`notes/setup.md`](notes/setup.md); the unlearning runner `run_lambda.sh` builds its own pinned environment
 (PyTorch 2.10, CUDA 12.8). Tiny Aya is gated: accept its licence on Hugging Face first.
 
-**Work done outside the hackathon:** none. The code, runs and analysis were done for the hackathon; this repository's history starts on 10 November 2026.
+**Work done outside the hackathon:** none. The code, runs and analysis were done for the hackathon; this repository's history starts on 10 November 2026 (UTC+3).
 
 ## 13. Discussion
 
@@ -555,7 +556,8 @@ single-language evaluation misses attacks that switch language, and an English-o
 
 ## 17. Changelog
 
-- **2026-11-15:** first submission; Hugging Face collection links added.
+- **2026-11-15 (UTC+3):** first submission; Hugging Face collection links added.
+- **2026-11-16 (UTC+3), before the deadline (2026-11-15 23:59 AoE):** BeaverTails-derived data removed from the repository; compute total corrected to 33 GPU-hours; limitations completed.
 
 ## Appendix
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Lexsi AI Safety hackathon entry (Track 2, submission Nov 14 2026). It tests whether SafeTune weight-space repairs on Cohere Tiny Aya survive Lee et al.'s five evaluation checks:
+This is a Lexsi AI Safety hackathon entry (Track 2, submission deadline Nov 15 2026, 23:59 AoE = Nov 16 14:59 UTC+3). It tests whether SafeTune weight-space repairs on Cohere Tiny Aya survive Lee et al.'s five evaluation checks:
 
 1. Tell the attacker.
 2. Report a range.
@@ -10,7 +10,7 @@ This is a Lexsi AI Safety hackathon entry (Track 2, submission Nov 14 2026). It 
 4. Clear a matched null.
 5. Give the defender an observable.
 
-Experiment 1 asks whether Antidote beats generic pruning and survives attackers that know about it, with a Russian attack-language axis (the teammate adds Hindi; her probe, Lee et al. and baseline code are separate). The smoke result is GO: clean HS 4.6, attacked 59.0, A3 repairs 96%, random pruning 21%. Code is on GitHub; artifacts go to the HF Hub. GPU runs happen on a local GPU (native Windows or Linux/WSL2) or in Colab, Kaggle or HF Jobs; `notes/setup.md` has one section per platform. `exp1_antidote/README.md` is the self-contained run-and-read guide (stages, arms, configs and profiles, local-first run, cloud options, measured timings on the RTX 5070 Ti: about 6 min of generation per run and about 31 GPU h in total, how to read `summary.md`); the root README links to it.
+Experiment 1 asks whether Antidote beats generic pruning and survives attackers that know about it, with a Russian attack-language axis (the teammate adds Hindi; her probe, Lee et al. and baseline code are separate). The smoke result is GO: clean HS 4.6, attacked 59.0, A3 repairs 96%, random pruning 21%. Code is on GitHub; artifacts go to the HF Hub. GPU runs happen on a local GPU (native Windows or Linux/WSL2) or in Colab, Kaggle or HF Jobs; `notes/setup.md` has one section per platform. `exp1_antidote/README.md` is the self-contained run-and-read guide (stages, arms, configs and profiles, local-first run, cloud options, measured timings on the RTX 5070 Ti: about 6 min of generation per run and about 33 GPU h in total, how to read `summary.md`); the root README links to it.
 
 ## Architecture
 

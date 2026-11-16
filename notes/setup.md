@@ -253,7 +253,7 @@ New repos are created private (`hub.private: true`); `publish.py` makes them pub
 
 ## Submission day
 
-Deadline: **Sun 15 Nov, 23:59**. Every command runs in PowerShell from the project folder with the venv active:
+Deadline: **Sun 15 Nov 2026, 23:59 AoE (UTC−12)**, which is Mon 16 Nov, 14:59 in UTC+3. Every command runs in PowerShell from the project folder with the venv active:
 
 ```powershell
 cd C:\Users\natal\dev\ValueShift\lexi_hack
@@ -369,5 +369,5 @@ Until the queue is finished, merge only on the website. Switching branches or pu
 - [ ] Abstract under 500 words
 - [ ] `git status` clean of outputs and secrets; committed and pushed
 - [ ] All PRs merged into `main`; `main` shows the final README
-- [ ] Form submitted with every field, before Sun 23:59
+- [ ] Form submitted with every field, before Sun 15 Nov 23:59 AoE (Mon 16 Nov 14:59 UTC+3)
 - [ ] Confirmation email or page saved

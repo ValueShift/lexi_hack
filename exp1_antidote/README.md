@@ -192,20 +192,20 @@ The 26-minute attack was the first one, while the PC was in use; later ones took
 | `relearn` | 45 | about 9.5 h, over two sessions |
 | `a2_diag` | 1 | 8 min |
 | `ru` | 19 (3 attacks) | 3.1 h |
-| `dose` | 42 new (6 attacks) | about 6.5 h (estimate) |
-| `adaptive` | 19 (3 attacks) | about 3.5 h (estimate) |
+| `dose` | 42 new (6 attacks) | 7.05 h |
+| `adaptive` | 19 (3 attacks) | about 4.9 h, over two sessions |
 | `compare` | – | seconds |
-| **Total** | | **about 31 GPU hours** |
+| **Total** | | **about 33 GPU hours** |
 
 Some of these figures are not single measurements:
 
 - **Sweep:** the queue log records only its second session (3.1 h); the first is reconstructed from the per-run timings.
 - **Relearning:** 8.2 h on the first day plus 1.2 h the next morning.
-- **Dose and adaptive:** projected from the per-run timings; they were still running when this was written.
+- **Mask-aware attacker:** about 3.9 h on the first day (until the PC was switched off) plus 0.97 h the next morning. Its attacks take 23–32 min each, because the attacker recomputes the pruning mask every 20 steps and takes half its steps through the pruned view.
 
 The smoke test (5 runs, one attack) takes roughly an hour, including the first model downloads.
 
-The PC was switched off overnight, so the queue ran in daytime sessions of about 9–13 hours, Thursday 12 to Sunday 15 November. Each restart resumed from its checkpoints.
+The PC was switched off overnight, so the queue ran in daytime sessions of about 9–13 hours, Thursday 12 to Sunday 15 November 2026 (UTC+3). Each restart resumed from its checkpoints.
 
 ### Rough estimates for other setups (not measured)
 
@@ -217,7 +217,7 @@ With the transformers backend, generation is most of the GPU time (about 6 of th
 
 ## Reading the outputs
 
-The outputs of the runs in the write-up are committed under [`outputs/`](../outputs/), [`outputs_ru/`](../outputs_ru/) and [`outputs_adaptive/`](../outputs_adaptive/) (no weights), and on the Hugging Face logs datasets. `analysis/auditkit_crosscheck.csv` in each rescores SST2 and MMLU-Pro with AuditKIT (identical to the pipeline's accuracy in all 187 runs).
+The outputs of the runs in the write-up are committed under [`outputs/`](../outputs/), [`outputs_ru/`](../outputs_ru/) and [`outputs_adaptive/`](../outputs_adaptive/) (no weights, and no `data/`: the BeaverTails-derived files are rebuilt by `--stage data`), and on the Hugging Face logs datasets. `analysis/auditkit_crosscheck.csv` in each rescores SST2 and MMLU-Pro with AuditKIT (identical to the pipeline's accuracy in all 187 runs).
 
 Everything lives under `$EXP1_OUT` (default `outputs/`). The Russian and mask-aware jobs use their own roots, `outputs_ru/` and `outputs_adaptive/`.
 
